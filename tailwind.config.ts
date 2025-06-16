@@ -10,8 +10,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Inter', 'sans-serif'],
-        headline: ['Inter', 'sans-serif'],
+        body: ['Rajdhani', 'sans-serif'],
+        headline: ['Rajdhani', 'sans-serif'],
         code: ['monospace'],
       },
       colors: {
@@ -89,14 +89,19 @@ export default {
           },
         },
         'message-in': {
-          '0%': { opacity: '0', transform: 'translateY(10px)' },
-          '100%': { opacity: '1', transform: 'translateY(0)' },
-        }
+          '0%': { opacity: '0', transform: 'translateY(10px) scale(0.95)' },
+          '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
+        },
+        'futuristic-pulse': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.9' },
+          '50%': { transform: 'scale(1.15)', opacity: '1' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
-        'message-in': 'message-in 0.3s ease-out forwards',
+        'message-in': 'message-in 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards',
+        'futuristic-pulse': 'futuristic-pulse 2.5s ease-in-out infinite',
       },
     },
   },

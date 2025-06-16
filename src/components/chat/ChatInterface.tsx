@@ -54,7 +54,7 @@ export default function ChatInterface() {
       const aiInput: ManageConversationContextInput = {
         userInput: userMessage.content,
         conversationHistory: conversationHistory
-          .filter(msg => msg.id !== 'welcome-message') // Don't send initial welcome message as history
+          .filter(msg => msg.id !== 'welcome-message' && msg.id !== 'welcome-message-cleared') // Don't send initial/cleared welcome message as history
           .map((msg) => ({
             role: msg.role,
             content: msg.content,
@@ -76,8 +76,6 @@ export default function ChatInterface() {
         title: 'Error',
         description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
       });
-      // Optionally add back the user message to history if it was removed optimistically, or handle retry.
-      // For now, we keep the user message.
     } finally {
       setIsLoading(false);
     }
@@ -99,9 +97,9 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="p-4 border-b bg-card">
+      <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <h1 className="text-2xl font-headline font-semibold flex items-center gap-2 text-primary">
-          <Sparkles size={28} />
+          <Sparkles size={28} className="animate-futuristic-pulse text-accent" />
           AbduDev AI
         </h1>
       </header>

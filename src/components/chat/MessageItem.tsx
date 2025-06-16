@@ -1,5 +1,5 @@
 import type { Message } from './ChatInterface';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
 import { User, Bot } from 'lucide-react';
 
@@ -13,30 +13,30 @@ export default function MessageItem({ message }: MessageItemProps) {
   return (
     <div
       className={cn(
-        'flex items-start gap-3 p-4 rounded-lg shadow-sm animate-message-in',
+        'flex items-start gap-3 p-1 animate-message-in', // Reduced padding for tighter look
         isUser ? 'justify-end' : 'justify-start'
       )}
     >
       {!isUser && (
-        <Avatar className="h-8 w-8 shrink-0">
-          <AvatarFallback className="bg-primary text-primary-foreground">
+        <Avatar className="h-8 w-8 shrink-0 border border-accent/50 shadow-md">
+          <AvatarFallback className="bg-accent text-accent-foreground">
             <Bot size={18} />
           </AvatarFallback>
         </Avatar>
       )}
       <div
         className={cn(
-          'max-w-[70%] p-3 rounded-xl',
+          'max-w-[75%] p-3 shadow-md text-sm', // Consistent text size
           isUser
-            ? 'bg-primary text-primary-foreground rounded-br-none'
-            : 'bg-card text-card-foreground rounded-bl-none border'
+            ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/70' // Sharper user bubble
+            : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70' // Sharper AI bubble
         )}
       >
-        <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+        <p className="whitespace-pre-wrap">{message.content}</p>
       </div>
       {isUser && (
-        <Avatar className="h-8 w-8 shrink-0">
-          <AvatarFallback className="bg-accent text-accent-foreground">
+        <Avatar className="h-8 w-8 shrink-0 border border-primary/50 shadow-md">
+          <AvatarFallback className="bg-primary text-primary-foreground">
             <User size={18} />
           </AvatarFallback>
         </Avatar>
