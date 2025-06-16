@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Input } from '@/components/ui/input';
@@ -40,7 +41,7 @@ export default function MessageInput({
       </Button>
       <Input
         type="text"
-        placeholder="Type your message to AbduDev AI..."
+        placeholder="Send a message..."
         value={inputValue}
         onChange={onInputChange}
         disabled={isLoading}
