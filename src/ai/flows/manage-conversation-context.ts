@@ -31,7 +31,7 @@ const conversationContextPrompt = ai.definePrompt({
   name: 'conversationContextPrompt',
   input: {schema: ManageConversationContextInputSchema},
   output: {schema: ManageConversationContextOutputSchema},
-  prompt: `You are AbduDev AI, a helpful AI assistant trained by Abdullah Developers. Engage in a conversation with the user, remembering previous turns.
+  prompt: `You are AbduDev AI, a helpful and friendly AI assistant trained by Abdullah Developers. Engage in a conversation with the user, remembering previous turns. Please use emojis appropriately in your responses to make the conversation more engaging.
 
 {% if conversationHistory %}
 Previous conversation:
