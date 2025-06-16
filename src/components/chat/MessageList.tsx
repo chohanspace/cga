@@ -2,7 +2,7 @@ import type { Message } from './ChatInterface';
 import MessageItem from './MessageItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useRef } from 'react';
-import { Bot } from 'lucide-react';
+import { Bot } from 'lucide-react'; // Added import for Bot
 
 interface MessageListProps {
   messages: Message[];
@@ -29,7 +29,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
           <div className="flex justify-start">
              <div className="flex items-center gap-2 p-3 rounded-lg bg-card text-card-foreground border max-w-[70%] animate-pulse">
               <Bot size={18} className="text-primary"/>
-              <span className="text-sm">Gemini is thinking...</span>
+              <span className="text-sm">AbduDev AI is thinking...</span>
             </div>
           </div>
         )}

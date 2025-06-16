@@ -26,7 +26,7 @@ export default function ChatInterface() {
       {
         id: 'welcome-message',
         role: 'model',
-        content: "Hello! I'm Gemini Assistant. How can I help you today?",
+        content: "Hello! I'm AbduDev AI, trained by Abdullah Developers. How can I help you today?",
       },
     ]);
   }, []);
@@ -74,7 +74,7 @@ export default function ChatInterface() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to get response from Gemini. Please check your API key and try again.',
+        description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
       });
       // Optionally add back the user message to history if it was removed optimistically, or handle retry.
       // For now, we keep the user message.
@@ -102,7 +102,7 @@ export default function ChatInterface() {
       <header className="p-4 border-b bg-card">
         <h1 className="text-2xl font-headline font-semibold flex items-center gap-2 text-primary">
           <Sparkles size={28} />
-          Gemini Assistant
+          AbduDev AI
         </h1>
       </header>
       <main className="flex-grow flex flex-col overflow-hidden">

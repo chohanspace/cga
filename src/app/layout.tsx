@@ -3,8 +3,8 @@ import './globals.css';
 import { Toaster } from "@/components/ui/toaster";
 
 export const metadata: Metadata = {
-  title: 'Gemini Assistant',
-  description: 'AI Assistant powered by Gemini',
+  title: 'AbduDev AI',
+  description: 'AI Assistant by Abdullah Developers',
 };
 
 export default function RootLayout({

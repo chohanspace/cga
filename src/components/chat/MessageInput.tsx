@@ -40,7 +40,7 @@ export default function MessageInput({
       </Button>
       <Input
         type="text"
-        placeholder="Type your message to Gemini..."
+        placeholder="Type your message to AbduDev AI..."
         value={inputValue}
         onChange={onInputChange}
         disabled={isLoading}
