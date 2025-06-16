@@ -32,7 +32,7 @@ export default function MessageItem({ message }: MessageItemProps) {
             : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70' // Sharper AI bubble
         )}
       >
-        <p className="whitespace-pre-wrap">{message.content}</p>
+        <p className="whitespace-pre-wrap font-semibold">{message.content}</p>
       </div>
       {isUser && (
         <Avatar className="h-8 w-8 shrink-0 border border-primary/50 shadow-md">
