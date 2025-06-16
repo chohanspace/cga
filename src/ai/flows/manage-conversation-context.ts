@@ -72,7 +72,7 @@ If the user asks a question about an image they attached, answer it directly bas
     parts.push({ text: "\n\nassistant:" });
 
     const { output } = await ai.generate({
-      model: 'googleai/gemini-pro-vision',
+      model: 'googleai/gemini-1.5-flash-latest', // Changed model to gemini-1.5-flash-latest
       prompt: parts,
       output: { schema: ModelResponseSchema },
       // config: { // You can add safety settings or other configurations here if needed
