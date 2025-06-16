@@ -31,6 +31,7 @@ export async function manageConversationContext(input: ManageConversationContext
 
 const conversationContextPrompt = ai.definePrompt({
   name: 'conversationContextPrompt',
+  model: 'googleai/gemini-pro-vision', // Explicitly set a vision-capable model
   input: {schema: ManageConversationContextInputSchema},
   output: {schema: ManageConversationContextOutputSchema},
   prompt: `You are AbduDev AI, a helpful and friendly AI assistant trained by Abdullah Developers. Your primary goal is to assist the user. Engage in a conversation with the user, remembering previous turns. Please use emojis appropriately in your responses to make the conversation more engaging. When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
@@ -93,3 +94,4 @@ const manageConversationContextFlow = ai.defineFlow(
     return {response, updatedConversationHistory};
   }
 );
+
