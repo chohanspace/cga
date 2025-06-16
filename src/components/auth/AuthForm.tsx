@@ -12,7 +12,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Check, XCircle } from 'lucide-react';
 
 const formSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username must be at most 20 characters'),
@@ -28,6 +28,8 @@ interface AuthFormProps {
 
 export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [authStatus, setAuthStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
@@ -38,8 +40,21 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
 
   const handleSubmit = async (data: FormData) => {
     setIsSubmitting(true);
-    await onSubmit(data);
-    setIsSubmitting(false);
+    setAuthStatus('pending');
+    
+    const success = await onSubmit(data);
+
+    if (success) {
+      setAuthStatus('success');
+      // Navigation is handled by AuthContext.
+      // isSubmitting remains true as the component will likely unmount or navigate away.
+    } else {
+      setAuthStatus('error');
+      setTimeout(() => {
+        setAuthStatus('idle');
+        setIsSubmitting(false); // Re-enable form for another attempt
+      }, 2000); // Show error state for 2 seconds
+    }
   };
 
   return (
@@ -84,21 +99,37 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {mode === 'login' ? 'Log In' : 'Sign Up'}
+              {authStatus === 'pending' ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Processing...
+                </>
+              ) : authStatus === 'success' ? (
+                <>
+                  <Check className="mr-2 h-5 w-5 text-green-500" />
+                  Success!
+                </>
+              ) : authStatus === 'error' ? (
+                <>
+                  <XCircle className="mr-2 h-5 w-5 text-destructive" />
+                  {mode === 'login' ? 'Login Failed' : 'Signup Failed'}
+                </>
+              ) : (
+                mode === 'login' ? 'Log In' : 'Sign Up'
+              )}
             </Button>
             <div className="text-sm text-center">
               {mode === 'login' ? (
                 <>
                   Don&apos;t have an account?{' '}
-                  <Link href="/auth/signup" className="font-medium text-primary hover:underline">
+                  <Link href="/auth/signup" className="font-medium text-primary hover:underline" tabIndex={isSubmitting ? -1 : undefined}>
                     Sign up
                   </Link>
                 </>
               ) : (
                 <>
                   Already have an account?{' '}
-                  <Link href="/auth/login" className="font-medium text-primary hover:underline">
+                  <Link href="/auth/login" className="font-medium text-primary hover:underline" tabIndex={isSubmitting ? -1 : undefined}>
                     Log in
                   </Link>
                 </>
