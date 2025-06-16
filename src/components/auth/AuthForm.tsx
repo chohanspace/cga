@@ -2,17 +2,18 @@
 'use client';
 
 import type React from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
+import { Label }_ from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Link from 'next/link';
-import { useState } from 'react';
 import { Loader2, Check, XCircle } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username must be at most 20 characters'),
@@ -26,9 +27,78 @@ interface AuthFormProps {
   onSubmit: (data: FormData) => Promise<boolean>;
 }
 
+const TYPING_SPEED = 120;
+const DELETING_SPEED = 70;
+const PAUSE_DURATION_AFTER_TYPING = 1800;
+const PAUSE_DURATION_BEFORE_NEXT_PHRASE = 400;
+
+interface AnimatedPhraseConfig {
+  text: string;
+  isFinal?: boolean;
+}
+
 export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+
+  const [displayedText, setDisplayedText] = useState('');
+  const [currentPhraseConfigIndex, setCurrentPhraseConfigIndex] = useState(0);
+  const [charIndex, setCharIndex] = useState(0);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [isPausedForAnimation, setIsPausedForAnimation] = useState(false);
+
+
+  const phraseConfigurations: AnimatedPhraseConfig[] = useMemo(() => [
+    { text: "Welcome to AbduDev AI" },
+    { text: "Pakistan's first AI Assistant" },
+    {
+      text: mode === 'login' ? "Log into AbduDev AI to get started" : "Sign up in AbduDev AI to get started",
+      isFinal: true,
+    },
+  ], [mode]);
+
+  useEffect(() => {
+    if (isPausedForAnimation || currentPhraseConfigIndex >= phraseConfigurations.length) return;
+
+    const currentConfig = phraseConfigurations[currentPhraseConfigIndex];
+    if (!currentConfig) return; 
+
+    let timeoutId: NodeJS.Timeout;
+
+    if (!isDeleting) { // Typing mode
+      if (charIndex < currentConfig.text.length) {
+        setDisplayedText(currentConfig.text.substring(0, charIndex + 1));
+        timeoutId = setTimeout(() => setCharIndex(charIndex + 1), TYPING_SPEED);
+      } else { // Finished typing current phrase
+        if (currentConfig.isFinal) {
+          return; // Animation done
+        }
+        setIsPausedForAnimation(true);
+        timeoutId = setTimeout(() => {
+          setIsDeleting(true);
+          setIsPausedForAnimation(false);
+        }, PAUSE_DURATION_AFTER_TYPING);
+      }
+    } else { // Deleting mode
+      if (charIndex > 0) {
+        setDisplayedText(currentConfig.text.substring(0, charIndex - 1));
+        timeoutId = setTimeout(() => setCharIndex(charIndex - 1), DELETING_SPEED);
+      } else { // Finished deleting current phrase
+        setIsDeleting(false);
+        setIsPausedForAnimation(true);
+        timeoutId = setTimeout(() => {
+          if (currentPhraseConfigIndex < phraseConfigurations.length -1) {
+            setCurrentPhraseConfigIndex(currentPhraseConfigIndex + 1);
+          }
+          // charIndex is already 0
+          setIsPausedForAnimation(false);
+        }, PAUSE_DURATION_BEFORE_NEXT_PHRASE);
+      }
+    }
+
+    return () => clearTimeout(timeoutId);
+  }, [charIndex, isDeleting, currentPhraseConfigIndex, phraseConfigurations, isPausedForAnimation]);
+
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -46,24 +116,38 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
 
     if (success) {
       setAuthStatus('success');
-      // Navigation is handled by AuthContext.
-      // isSubmitting remains true as the component will likely unmount or navigate away.
     } else {
       setAuthStatus('error');
       setTimeout(() => {
         setAuthStatus('idle');
-        setIsSubmitting(false); // Re-enable form for another attempt
-      }, 2000); // Show error state for 2 seconds
+        setIsSubmitting(false); 
+      }, 2000); 
     }
   };
+
+  const currentPhraseDone = phraseConfigurations[currentPhraseConfigIndex]?.isFinal && charIndex === phraseConfigurations[currentPhraseConfigIndex]?.text.length;
 
   return (
     <Card className="w-full max-w-sm shadow-2xl border-border/50">
       <CardHeader>
-        <CardTitle className="text-3xl font-bold text-center text-primary">
-          {mode === 'login' ? 'Welcome Back!' : 'Create Account'}
+        <CardTitle 
+            className="text-3xl font-bold text-center text-primary flex items-center justify-center h-20" // h-20 for ~2 lines of 3xl
+            aria-live="polite"
+        >
+          <span className="relative">
+            {displayedText}
+            <span
+              className={cn(
+                'inline-block animate-pulse ml-0.5',
+                (isPausedForAnimation || currentPhraseDone) && 'opacity-0'
+              )}
+              aria-hidden="true"
+            >
+              |
+            </span>
+          </span>
         </CardTitle>
-        <CardDescription className="text-center">
+        <CardDescription className="text-center pt-2">
           {mode === 'login' ? 'Log in to continue to AbduDev AI.' : 'Enter your details to get started.'}
         </CardDescription>
       </CardHeader>
