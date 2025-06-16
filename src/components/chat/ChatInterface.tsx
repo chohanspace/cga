@@ -19,6 +19,17 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
+  useEffect(() => {
+    // Add initial greeting message from AbduDev AI
+    setConversationHistory([
+      {
+        id: 'welcome-message-initial',
+        role: 'model',
+        content: "Hello! I am AbduDev AI, your friendly assistant. How can I help you today? ✨",
+      },
+    ]);
+  }, []);
+
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
@@ -35,8 +46,9 @@ export default function ChatInterface() {
       content: currentUserInput,
     };
 
+    // Filter out any potential client-side only messages before sending to AI
     const historyForAI = conversationHistory
-      .filter(msg => msg.id !== 'welcome-message-cleared') 
+      .filter(msg => msg.id !== 'welcome-message-initial' && msg.id !== 'welcome-message-cleared')
       .map(msg => ({ role: msg.role, content: msg.content }));
 
     setConversationHistory(prev => [...prev, userMessage]);
@@ -98,7 +110,7 @@ export default function ChatInterface() {
           onSubmit={handleSubmit}
           onClear={handleClearContext}
           isLoading={isLoading}
-          canClear={conversationHistory.filter(msg => msg.id !== 'welcome-message-cleared').length > 0}
+          canClear={conversationHistory.filter(msg => msg.id !== 'welcome-message-cleared' && msg.id !== 'welcome-message-initial').length > 0}
         />
       </main>
     </div>
