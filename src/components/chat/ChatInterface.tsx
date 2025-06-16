@@ -41,9 +41,10 @@ export default function ChatInterface() {
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!inputValue.trim() || isLoading) return;
-
     const currentUserInput = inputValue.trim();
+
+    if (!currentUserInput || isLoading) return;
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
