@@ -7,7 +7,7 @@ import { cn } from '@/lib/utils';
 import { User, Bot, Loader2, Download, Eye } from 'lucide-react';
 import React, { useState } from 'react';
 import NextImage from 'next/image';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 
 interface MessageItemProps {
@@ -36,13 +36,11 @@ export default function MessageItem({ message }: MessageItemProps) {
     link.href = imageToView;
     
     let filename = imageNameToDownload || "downloaded_image.png";
-    // Ensure PNG for generated images if no extension provided
-    if (imageToView === message.imageUrl && !filename.toLowerCase().endsWith('.png') && !filename.toLowerCase().endsWith('.jpg') && !filename.toLowerCase().endsWith('.jpeg') && !filename.toLowerCase().endsWith('.gif') && !filename.toLowerCase().endsWith('.webp')) {
-        const baseName = filename.substring(0, filename.lastIndexOf('.')) || filename;
-        // Assuming generated images are PNG from data URI
+    // Ensure correct extension for generated images if no extension provided
+    if (imageToView === message.imageUrl && !filename.toLowerCase().match(/\.(png|jpg|jpeg|gif|webp)$/)) {
         const mimeTypeMatch = imageToView.match(/^data:(image\/([a-zA-Z]+));base64,/);
         const extension = mimeTypeMatch && mimeTypeMatch[2] ? mimeTypeMatch[2] : 'png';
-        filename = `${baseName || `ai_image_${Date.now()}`}.${extension}`;
+        filename = `${filename.substring(0, filename.lastIndexOf('.')) || filename}.${extension}`;
     }
 
 
@@ -63,7 +61,7 @@ export default function MessageItem({ message }: MessageItemProps) {
     <Dialog onOpenChange={(isOpen) => !isOpen && (setImageToView(null), setImageNameToDownload(null))}>
       <DialogTrigger asChild>
         <div 
-          className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full max-w-xs aspect-video"
+          className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full max-w-xs aspect-[4/3] md:aspect-video"
           onClick={() => openImageDialog(src, name)}
         >
           <NextImage
