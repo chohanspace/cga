@@ -61,7 +61,7 @@ export default function MessageItem({ message }: MessageItemProps) {
     <Dialog onOpenChange={(isOpen) => !isOpen && (setImageToView(null), setImageNameToDownload(null))}>
       <DialogTrigger asChild>
         <div 
-          className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full max-w-xs aspect-[4/3] md:aspect-video"
+          className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full max-w-xs aspect-video"
           onClick={() => openImageDialog(src, name)}
         >
           <NextImage
