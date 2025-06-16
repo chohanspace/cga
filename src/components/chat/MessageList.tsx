@@ -1,8 +1,9 @@
+
 import type { Message } from './ChatInterface';
 import MessageItem from './MessageItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useRef } from 'react';
-import { Bot } from 'lucide-react'; // Added import for Bot
+import { Bot } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
@@ -11,17 +12,20 @@ interface MessageListProps {
 
 export default function MessageList({ messages, isLoading }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-  const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (viewportRef.current) {
-      viewportRef.current.scrollTop = viewportRef.current.scrollHeight;
+    if (contentRef.current) {
+      const scrollableViewport = contentRef.current.parentElement;
+      if (scrollableViewport) {
+        scrollableViewport.scrollTop = scrollableViewport.scrollHeight;
+      }
     }
   }, [messages, isLoading]);
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
-      <div className="p-4 space-y-4" ref={viewportRef}>
+      <div className="p-4 space-y-4" ref={contentRef}>
         {messages.map((msg) => (
           <MessageItem key={msg.id} message={msg} />
         ))}
