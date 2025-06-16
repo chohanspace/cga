@@ -58,45 +58,67 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
   ], [mode]);
 
   useEffect(() => {
-    if (isPausedForAnimation || currentPhraseConfigIndex >= phraseConfigurations.length) return;
-
     const currentConfig = phraseConfigurations[currentPhraseConfigIndex];
-    if (!currentConfig) return; 
 
-    let timeoutId: NodeJS.Timeout;
+    if (!currentConfig || currentPhraseConfigIndex >= phraseConfigurations.length) {
+      return; // Animation is done or config is bad
+    }
+
+    // If paused, a timer is already set to unpause. Don't do anything else.
+    if (isPausedForAnimation) {
+      return;
+    }
+
+    let animationStepTimeoutId: NodeJS.Timeout | undefined;
 
     if (!isDeleting) { // Typing mode
       if (charIndex < currentConfig.text.length) {
         setDisplayedText(currentConfig.text.substring(0, charIndex + 1));
-        timeoutId = setTimeout(() => setCharIndex(charIndex + 1), TYPING_SPEED);
+        animationStepTimeoutId = setTimeout(() => {
+          setCharIndex(charIndex + 1);
+        }, TYPING_SPEED);
       } else { // Finished typing current phrase
-        if (currentConfig.isFinal) {
-          return; // Animation done
-        }
-        setIsPausedForAnimation(true);
-        timeoutId = setTimeout(() => {
+        if (currentConfig.isFinal) return; // Animation truly done
+
+        setIsPausedForAnimation(true); // Start pause
+        // This timeout handles the pause and transitions to the next state.
+        // It's not cleared by the effect's cleanup of animationStepTimeoutId.
+        setTimeout(() => {
           setIsDeleting(true);
-          setIsPausedForAnimation(false);
+          // charIndex is already at currentConfig.text.length, suitable for deletion start
+          setIsPausedForAnimation(false); // End pause, will trigger useEffect
         }, PAUSE_DURATION_AFTER_TYPING);
       }
     } else { // Deleting mode
       if (charIndex > 0) {
         setDisplayedText(currentConfig.text.substring(0, charIndex - 1));
-        timeoutId = setTimeout(() => setCharIndex(charIndex - 1), DELETING_SPEED);
+        animationStepTimeoutId = setTimeout(() => {
+          setCharIndex(charIndex - 1);
+        }, DELETING_SPEED);
       } else { // Finished deleting current phrase
-        setIsDeleting(false);
-        setIsPausedForAnimation(true);
-        timeoutId = setTimeout(() => {
-          if (currentPhraseConfigIndex < phraseConfigurations.length -1) {
-            setCurrentPhraseConfigIndex(currentPhraseConfigIndex + 1);
-          }
-          // charIndex is already 0
-          setIsPausedForAnimation(false);
+        setIsPausedForAnimation(true); // Start pause
+        // This timeout handles the pause and transitions to the next phrase/state.
+        setTimeout(() => {
+          setIsDeleting(false);
+          setCurrentPhraseConfigIndex(prevIndex => {
+            // Check if next phrase would be out of bounds
+            if (prevIndex + 1 >= phraseConfigurations.length) {
+                 // This case should ideally be caught by isFinal on the last phrase config
+                return prevIndex; 
+            }
+            return prevIndex + 1;
+          });
+          // charIndex is already 0, suitable for typing the next phrase
+          setIsPausedForAnimation(false); // End pause, will trigger useEffect
         }, PAUSE_DURATION_BEFORE_NEXT_PHRASE);
       }
     }
 
-    return () => clearTimeout(timeoutId);
+    return () => {
+      if (animationStepTimeoutId) {
+        clearTimeout(animationStepTimeoutId);
+      }
+    };
   }, [charIndex, isDeleting, currentPhraseConfigIndex, phraseConfigurations, isPausedForAnimation]);
 
 
@@ -124,14 +146,16 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
       }, 2000); 
     }
   };
-
-  const currentPhraseDone = phraseConfigurations[currentPhraseConfigIndex]?.isFinal && charIndex === phraseConfigurations[currentPhraseConfigIndex]?.text.length;
+  
+  const currentPhraseIsDoneAndFinal = 
+    phraseConfigurations[currentPhraseConfigIndex]?.isFinal && 
+    charIndex === phraseConfigurations[currentPhraseConfigIndex]?.text.length;
 
   return (
     <Card className="w-full max-w-sm shadow-2xl border-border/50">
       <CardHeader>
         <CardTitle 
-            className="text-3xl font-bold text-center text-primary flex items-center justify-center h-20" // h-20 for ~2 lines of 3xl
+            className="text-3xl font-bold text-center text-primary flex items-center justify-center h-20" 
             aria-live="polite"
         >
           <span className="relative">
@@ -139,7 +163,7 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
             <span
               className={cn(
                 'inline-block animate-pulse ml-0.5',
-                (isPausedForAnimation || currentPhraseDone) && 'opacity-0'
+                (isPausedForAnimation || currentPhraseIsDoneAndFinal || currentPhraseConfigIndex >= phraseConfigurations.length) && 'opacity-0'
               )}
               aria-hidden="true"
             >
