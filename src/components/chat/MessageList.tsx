@@ -2,6 +2,7 @@ import type { Message } from './ChatInterface';
 import MessageItem from './MessageItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useEffect, useRef } from 'react';
+import { Bot } from 'lucide-react';
 
 interface MessageListProps {
   messages: Message[];
