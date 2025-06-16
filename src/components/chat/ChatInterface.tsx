@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -5,7 +6,6 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
 import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Sparkles } from 'lucide-react';
 
 export interface Message {
@@ -14,13 +14,18 @@ export interface Message {
   content: string;
 }
 
+interface PendingAIRequest {
+  userInput: string;
+  historyForAI: Array<{ role: 'user' | 'model'; content: string }>;
+}
+
 export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const [pendingAIRequest, setPendingAIRequest] = useState<PendingAIRequest | null>(null);
 
-  // Welcome message
   useEffect(() => {
     setConversationHistory([
       {
@@ -31,55 +36,64 @@ export default function ChatInterface() {
     ]);
   }, []);
 
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!inputValue.trim()) return;
+    if (!inputValue.trim() || isLoading) return;
 
+    const currentUserInput = inputValue.trim();
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: inputValue.trim(),
+      content: currentUserInput,
     };
 
-    setConversationHistory((prev) => [...prev, userMessage]);
+    const historyForAI = conversationHistory
+      .filter(msg => msg.id !== 'welcome-message' && msg.id !== 'welcome-message-cleared')
+      .map(msg => ({ role: msg.role, content: msg.content }));
+
+    setConversationHistory(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-
-    try {
-      const aiInput: ManageConversationContextInput = {
-        userInput: userMessage.content,
-        conversationHistory: conversationHistory
-          .filter(msg => msg.id !== 'welcome-message' && msg.id !== 'welcome-message-cleared') // Don't send initial/cleared welcome message as history
-          .map((msg) => ({
-            role: msg.role,
-            content: msg.content,
-          })),
-      };
-      
-      const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
-      
-      const aiMessage: Message = {
-        id: `model-${Date.now()}`,
-        role: 'model',
-        content: result.response,
-      };
-      setConversationHistory((prev) => [...prev, aiMessage]);
-    } catch (error) {
-      console.error('Error calling AI:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
+    setPendingAIRequest({ userInput: currentUserInput, historyForAI });
   };
+
+  useEffect(() => {
+    if (pendingAIRequest) {
+      const callAI = async () => {
+        try {
+          const aiInput: ManageConversationContextInput = {
+            userInput: pendingAIRequest.userInput,
+            conversationHistory: pendingAIRequest.historyForAI,
+          };
+          
+          const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
+          
+          const aiMessage: Message = {
+            id: `model-${Date.now()}`,
+            role: 'model',
+            content: result.response,
+          };
+          setConversationHistory(prev => [...prev, aiMessage]);
+        } catch (error) {
+          console.error('Error calling AI:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Error',
+            description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
+          });
+        } finally {
+          setIsLoading(false);
+          setPendingAIRequest(null);
+        }
+      };
+      callAI();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pendingAIRequest, toast]);
 
   const handleClearContext = () => {
     setConversationHistory([
