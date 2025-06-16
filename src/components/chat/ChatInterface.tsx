@@ -6,6 +6,9 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/context/AuthContext';
+import { Button } from '@/components/ui/button';
+import { LogOut } from 'lucide-react';
 
 export interface Message {
   id: string;
@@ -16,19 +19,19 @@ export interface Message {
 export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
   const { toast } = useToast();
+  const { currentUser, logout } = useAuth();
 
   useEffect(() => {
-    // Add initial greeting message from AbduDev AI
     setConversationHistory([
       {
         id: 'welcome-message-initial',
         role: 'model',
-        content: "Hello! I am AbduDev AI, your friendly assistant. How can I help you today? ✨",
+        content: `Hello ${currentUser?.username}! I am AbduDev AI, your friendly assistant. How can I help you today? ✨`,
       },
     ]);
-  }, []);
+  }, [currentUser]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -38,7 +41,7 @@ export default function ChatInterface() {
     e.preventDefault();
     const currentUserInput = inputValue.trim();
 
-    if (!currentUserInput || isLoading) return;
+    if (!currentUserInput || isLoadingAI) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -46,14 +49,13 @@ export default function ChatInterface() {
       content: currentUserInput,
     };
 
-    // Filter out any potential client-side only messages before sending to AI
     const historyForAI = conversationHistory
       .filter(msg => msg.id !== 'welcome-message-initial' && msg.id !== 'welcome-message-cleared')
       .map(msg => ({ role: msg.role, content: msg.content }));
 
     setConversationHistory(prev => [...prev, userMessage]);
     setInputValue('');
-    setIsLoading(true);
+    setIsLoadingAI(true);
 
     try {
       const aiInput: ManageConversationContextInput = {
@@ -76,8 +78,10 @@ export default function ChatInterface() {
         title: 'Error',
         description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
       });
+      // Add the user's message back to the input if AI fails, or let them retry
+      // For simplicity, we'll just show an error.
     } finally {
-      setIsLoading(false);
+      setIsLoadingAI(false);
     }
   };
 
@@ -97,19 +101,27 @@ export default function ChatInterface() {
 
   return (
     <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
-      <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md">
+      <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md flex justify-between items-center">
         <h1 className="text-2xl font-headline font-semibold text-primary">
           AbduDev AI
         </h1>
+        {currentUser && (
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground hidden sm:inline">Logged in as: {currentUser.username}</span>
+            <Button variant="ghost" size="icon" onClick={logout} aria-label="Logout">
+              <LogOut size={20} />
+            </Button>
+          </div>
+        )}
       </header>
       <main className="flex-grow flex flex-col overflow-hidden">
-        <MessageList messages={conversationHistory} isLoading={isLoading} />
+        <MessageList messages={conversationHistory} isLoading={isLoadingAI} />
         <MessageInput
           inputValue={inputValue}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
           onClear={handleClearContext}
-          isLoading={isLoading}
+          isLoading={isLoadingAI}
           canClear={conversationHistory.filter(msg => msg.id !== 'welcome-message-cleared' && msg.id !== 'welcome-message-initial').length > 0}
         />
       </main>
