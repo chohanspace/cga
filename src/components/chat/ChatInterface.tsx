@@ -6,7 +6,6 @@ import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles } from 'lucide-react';
 
 export interface Message {
   id: string;
@@ -112,8 +111,7 @@ export default function ChatInterface() {
   return (
     <div className="flex flex-col h-screen bg-background shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md">
-        <h1 className="text-2xl font-headline font-semibold flex items-center gap-2 text-primary">
-          <Sparkles size={28} className="animate-futuristic-pulse text-accent" />
+        <h1 className="text-2xl font-headline font-semibold text-primary">
           AbduDev AI
         </h1>
       </header>
