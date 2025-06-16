@@ -61,55 +61,47 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
     const currentConfig = phraseConfigurations[currentPhraseConfigIndex];
 
     if (!currentConfig || currentPhraseConfigIndex >= phraseConfigurations.length) {
-      return; // Animation is done or config is bad
+      return; 
     }
 
-    // If paused, a timer is already set to unpause. Don't do anything else.
     if (isPausedForAnimation) {
       return;
     }
 
     let animationStepTimeoutId: NodeJS.Timeout | undefined;
 
-    if (!isDeleting) { // Typing mode
+    if (!isDeleting) { 
       if (charIndex < currentConfig.text.length) {
         setDisplayedText(currentConfig.text.substring(0, charIndex + 1));
         animationStepTimeoutId = setTimeout(() => {
           setCharIndex(charIndex + 1);
         }, TYPING_SPEED);
-      } else { // Finished typing current phrase
-        if (currentConfig.isFinal) return; // Animation truly done
+      } else { 
+        if (currentConfig.isFinal) return; 
 
-        setIsPausedForAnimation(true); // Start pause
-        // This timeout handles the pause and transitions to the next state.
-        // It's not cleared by the effect's cleanup of animationStepTimeoutId.
+        setIsPausedForAnimation(true); 
         setTimeout(() => {
           setIsDeleting(true);
-          // charIndex is already at currentConfig.text.length, suitable for deletion start
-          setIsPausedForAnimation(false); // End pause, will trigger useEffect
+          setIsPausedForAnimation(false); 
         }, PAUSE_DURATION_AFTER_TYPING);
       }
-    } else { // Deleting mode
+    } else { 
       if (charIndex > 0) {
         setDisplayedText(currentConfig.text.substring(0, charIndex - 1));
         animationStepTimeoutId = setTimeout(() => {
           setCharIndex(charIndex - 1);
         }, DELETING_SPEED);
-      } else { // Finished deleting current phrase
-        setIsPausedForAnimation(true); // Start pause
-        // This timeout handles the pause and transitions to the next phrase/state.
+      } else { 
+        setIsPausedForAnimation(true); 
         setTimeout(() => {
           setIsDeleting(false);
           setCurrentPhraseConfigIndex(prevIndex => {
-            // Check if next phrase would be out of bounds
             if (prevIndex + 1 >= phraseConfigurations.length) {
-                 // This case should ideally be caught by isFinal on the last phrase config
                 return prevIndex; 
             }
             return prevIndex + 1;
           });
-          // charIndex is already 0, suitable for typing the next phrase
-          setIsPausedForAnimation(false); // End pause, will trigger useEffect
+          setIsPausedForAnimation(false); 
         }, PAUSE_DURATION_BEFORE_NEXT_PHRASE);
       }
     }
@@ -230,16 +222,20 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
               {mode === 'login' ? (
                 <>
                   Don&apos;t have an account?{' '}
-                  <Link href="/auth/signup" className="font-medium text-primary hover:underline" tabIndex={isSubmitting ? -1 : undefined}>
-                    Sign up
-                  </Link>
+                  <Button asChild variant="link" className="p-1 transition-transform duration-150 hover:-translate-y-px active:translate-y-0" disabled={isSubmitting}>
+                    <Link href="/auth/signup" tabIndex={isSubmitting ? -1 : undefined}>
+                      Sign up
+                    </Link>
+                  </Button>
                 </>
               ) : (
                 <>
                   Already have an account?{' '}
-                  <Link href="/auth/login" className="font-medium text-primary hover:underline" tabIndex={isSubmitting ? -1 : undefined}>
-                    Log in
-                  </Link>
+                   <Button asChild variant="link" className="p-1 transition-transform duration-150 hover:-translate-y-px active:translate-y-0" disabled={isSubmitting}>
+                    <Link href="/auth/login" tabIndex={isSubmitting ? -1 : undefined}>
+                      Log in
+                    </Link>
+                  </Button>
                 </>
               )}
             </div>
