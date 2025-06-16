@@ -13,17 +13,11 @@ export interface Message {
   content: string;
 }
 
-interface PendingAIRequest {
-  userInput: string;
-  historyForAI: Array<{ role: 'user' | 'model'; content: string }>;
-}
-
 export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
-  const [pendingAIRequest, setPendingAIRequest] = useState<PendingAIRequest | null>(null);
 
   useEffect(() => {
     setConversationHistory([
@@ -39,7 +33,7 @@ export default function ChatInterface() {
     setInputValue(e.target.value);
   };
 
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const currentUserInput = inputValue.trim();
 
@@ -58,42 +52,32 @@ export default function ChatInterface() {
     setConversationHistory(prev => [...prev, userMessage]);
     setInputValue('');
     setIsLoading(true);
-    setPendingAIRequest({ userInput: currentUserInput, historyForAI });
-  };
 
-  useEffect(() => {
-    if (pendingAIRequest) {
-      const callAI = async () => {
-        try {
-          const aiInput: ManageConversationContextInput = {
-            userInput: pendingAIRequest.userInput,
-            conversationHistory: pendingAIRequest.historyForAI,
-          };
-          
-          const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
-          
-          const aiMessage: Message = {
-            id: `model-${Date.now()}`,
-            role: 'model',
-            content: result.response,
-          };
-          setConversationHistory(prev => [...prev, aiMessage]);
-        } catch (error) {
-          console.error('Error calling AI:', error);
-          toast({
-            variant: 'destructive',
-            title: 'Error',
-            description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
-          });
-        } finally {
-          setIsLoading(false);
-          setPendingAIRequest(null);
-        }
+    try {
+      const aiInput: ManageConversationContextInput = {
+        userInput: currentUserInput,
+        conversationHistory: historyForAI,
       };
-      callAI();
+      
+      const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
+      
+      const aiMessage: Message = {
+        id: `model-${Date.now()}`,
+        role: 'model',
+        content: result.response,
+      };
+      setConversationHistory(prev => [...prev, aiMessage]);
+    } catch (error) {
+      console.error('Error calling AI:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
+      });
+    } finally {
+      setIsLoading(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pendingAIRequest, toast]);
+  };
 
   const handleClearContext = () => {
     setConversationHistory([
@@ -110,7 +94,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md">
         <h1 className="text-2xl font-headline font-semibold text-primary">
           AbduDev AI
