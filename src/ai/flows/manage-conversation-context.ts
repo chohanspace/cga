@@ -29,46 +29,8 @@ export async function manageConversationContext(input: ManageConversationContext
   return manageConversationContextFlow(input);
 }
 
-const conversationContextPrompt = ai.definePrompt({
-  name: 'conversationContextPrompt',
-  // model: 'googleai/gemini-pro-vision', // Removed: Inherits from global ai config now
-  input: {schema: ManageConversationContextInputSchema},
-  output: {schema: ManageConversationContextOutputSchema},
-  prompt: `You are AbduDev AI, a helpful and friendly AI assistant trained by Abdullah Developers. Your primary goal is to assist the user. 
-Engage in a conversation with the user, remembering previous turns. 
-When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
-Please use emojis appropriately in your responses to make the conversation more engaging.
-
-If the user asks you to create, draw, or generate an image, your response **must** be ONLY the specific instruction \`[GENERATE_IMAGE: <detailed description of the image they want>]\`. Do not add any other text or pleasantries around this instruction if you are issuing it. For example, if the user says 'draw a happy dog', you should respond with: \`[GENERATE_IMAGE: a happy dog playing in a sunny park]\`.
-
-If the user asks a question about an image they attached, answer it directly based on the image. If the user's request is ambiguous about whether to generate an image or answer a question about an attachment, prioritize answering about the attachment if one is present.
-
-{% if conversationHistory.length > 0 %}
-Previous conversation:
-{% for turn in conversationHistory %}
-{{turn.role}}: {{turn.content}}
-{% endfor %}
-{% endif %}
-
-user: {{{userInput}}}
-{% if attachmentDataUri %}
-(The user has attached the following image. Please consider it in your response if relevant to the query.)
-Attached Image: {{media url=attachmentDataUri}}
-{% endif %}
-
-assistant:`,
-config: {
-    // Adjusted safety settings if needed, especially for image related queries.
-    // For instance, if image generation is too restrictive or if analyzing images leads to blocks.
-    // Example: Allow more leniency for dangerous content if it's about analyzing images of tools, etc.
-    // This is highly dependent on the use case. For now, default safety settings will apply.
-    // safetySettings: [
-    //   {
-    //     category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
-    //     threshold: 'BLOCK_ONLY_HIGH',
-    //   },
-    // ],
-  }
+const ModelResponseSchema = z.object({
+  response: z.string().describe('The AI response to the user input.'),
 });
 
 const manageConversationContextFlow = ai.defineFlow(
@@ -77,23 +39,60 @@ const manageConversationContextFlow = ai.defineFlow(
     inputSchema: ManageConversationContextInputSchema,
     outputSchema: ManageConversationContextOutputSchema,
   },
-  async input => {
-    const {userInput, conversationHistory = [], attachmentDataUri} = input;
-    const promptInput = {
-      userInput,
-      conversationHistory,
-      ...(attachmentDataUri && { attachmentDataUri }), // only include if present
-    };
+  async (input) => {
+    const { userInput, conversationHistory = [], attachmentDataUri } = input;
 
-    const promptResult = await conversationContextPrompt(promptInput);
+    const parts: Array<{ text: string } | { media: { url: string } }> = [];
 
-    const response = promptResult.output!.response;
+    parts.push({
+      text: `You are AbduDev AI, a helpful and friendly AI assistant trained by Abdullah Developers. Your primary goal is to assist the user. 
+Engage in a conversation with the user, remembering previous turns. 
+When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
+Please use emojis appropriately in your responses to make the conversation more engaging.
+
+If the user asks you to create, draw, or generate an image, your response **must** be ONLY the specific instruction \`[GENERATE_IMAGE: <detailed description of the image they want>]\`. Do not add any other text or pleasantries around this instruction if you are issuing it. For example, if the user says 'draw a happy dog', you should respond with: \`[GENERATE_IMAGE: a happy dog playing in a sunny park]\`.
+
+If the user asks a question about an image they attached, answer it directly based on the image. If the user's request is ambiguous about whether to generate an image or answer a question about an attachment, prioritize answering about the attachment if one is present.`
+    });
+
+    if (conversationHistory.length > 0) {
+      const historyText = conversationHistory
+        .map(turn => `${turn.role}: ${turn.content}`)
+        .join('\n');
+      parts.push({ text: `\n\nPrevious conversation:\n${historyText}` });
+    }
+
+    parts.push({ text: `\n\nuser: ${userInput}` });
+
+    if (attachmentDataUri) {
+      parts.push({ text: "\n(The user has attached the following image. Please consider it in your response if relevant to the query.)\nAttached Image:" });
+      parts.push({ media: { url: attachmentDataUri } });
+    }
+
+    parts.push({ text: "\n\nassistant:" });
+
+    const { output } = await ai.generate({
+      model: 'googleai/gemini-pro-vision',
+      prompt: parts,
+      output: { schema: ModelResponseSchema },
+      // config: { // You can add safety settings or other configurations here if needed
+      //   safetySettings: [
+      //     {
+      //       category: 'HARM_CATEGORY_DANGEROUS_CONTENT',
+      //       threshold: 'BLOCK_ONLY_HIGH',
+      //     },
+      //   ],
+      // }
+    });
+    
+    const aiResponseMessage = output!.response;
+
     const updatedConversationHistory = [
       ...conversationHistory,
-      {role: 'user', content: userInput},
-      {role: 'model', content: response},
+      { role: 'user' as const, content: userInput },
+      { role: 'model' as const, content: aiResponseMessage },
     ];
 
-    return {response, updatedConversationHistory};
+    return { response: aiResponseMessage, updatedConversationHistory };
   }
 );
