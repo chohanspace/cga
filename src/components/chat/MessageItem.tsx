@@ -1,10 +1,14 @@
 
+'use client';
+
 import type { Message } from './ChatInterface';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, Bot, Image as ImageIcon, Loader2 } from 'lucide-react';
-import React from 'react';
-import NextImage from 'next/image'; // Using NextImage for optimization
+import { User, Bot, Loader2, Download, Eye } from 'lucide-react';
+import React, { useState } from 'react';
+import NextImage from 'next/image';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter, DialogClose } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
 
 interface MessageItemProps {
   message: Message;
@@ -22,6 +26,79 @@ const renderFormattedMessage = (text: string) => {
 
 export default function MessageItem({ message }: MessageItemProps) {
   const isUser = message.role === 'user';
+  const [imageToView, setImageToView] = useState<string | null>(null);
+  const [imageNameToDownload, setImageNameToDownload] = useState<string | null>(null);
+
+  const handleDownload = () => {
+    if (!imageToView) return;
+
+    const link = document.createElement('a');
+    link.href = imageToView;
+    
+    let filename = imageNameToDownload || "downloaded_image.png";
+    // Ensure PNG for generated images if no extension provided
+    if (imageToView === message.imageUrl && !filename.toLowerCase().endsWith('.png') && !filename.toLowerCase().endsWith('.jpg') && !filename.toLowerCase().endsWith('.jpeg') && !filename.toLowerCase().endsWith('.gif') && !filename.toLowerCase().endsWith('.webp')) {
+        const baseName = filename.substring(0, filename.lastIndexOf('.')) || filename;
+        // Assuming generated images are PNG from data URI
+        const mimeTypeMatch = imageToView.match(/^data:(image\/([a-zA-Z]+));base64,/);
+        const extension = mimeTypeMatch && mimeTypeMatch[2] ? mimeTypeMatch[2] : 'png';
+        filename = `${baseName || `ai_image_${Date.now()}`}.${extension}`;
+    }
+
+
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setImageToView(null); // Close dialog after download
+    setImageNameToDownload(null);
+  };
+
+  const openImageDialog = (url: string, name?: string) => {
+    setImageToView(url);
+    setImageNameToDownload(name || `generated_image_${Date.now()}.png`);
+  };
+  
+  const ImageDisplay = ({ src, alt, name, isUserAttachment }: { src: string; alt: string; name?: string; isUserAttachment?: boolean }) => (
+    <Dialog onOpenChange={(isOpen) => !isOpen && (setImageToView(null), setImageNameToDownload(null))}>
+      <DialogTrigger asChild>
+        <div 
+          className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full max-w-xs aspect-video"
+          onClick={() => openImageDialog(src, name)}
+        >
+          <NextImage
+            src={src}
+            alt={alt}
+            layout="fill"
+            objectFit="cover"
+            className="group-hover:opacity-80 transition-opacity"
+            data-ai-hint={isUserAttachment ? "attached image" : "generated art"}
+          />
+          <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center transition-all duration-300">
+            <Eye size={32} className="text-white opacity-0 group-hover:opacity-100 transform scale-75 group-hover:scale-100 transition-all duration-300" />
+          </div>
+        </div>
+      </DialogTrigger>
+      {imageToView === src && (
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4">
+          <DialogHeader>
+            <DialogTitle className="truncate">{name || alt}</DialogTitle>
+          </DialogHeader>
+          <div className="flex-grow overflow-auto my-4 flex items-center justify-center">
+            <img src={src} alt={alt} className="max-w-full max-h-[70vh] object-contain rounded-md" />
+          </div>
+          <DialogFooter className="sm:justify-end gap-2">
+            <Button variant="outline" onClick={() => {setImageToView(null); setImageNameToDownload(null);}}>Close</Button>
+            <Button onClick={handleDownload}>
+              <Download size={16} className="mr-2" />
+              Download
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      )}
+    </Dialog>
+  );
+
 
   return (
     <div
@@ -50,35 +127,19 @@ export default function MessageItem({ message }: MessageItemProps) {
         {message.attachment && (
           <div className="mt-2 border-t border-border/30 pt-2">
             <p className="text-xs text-muted-foreground mb-1">Attached: {message.attachment.name}</p>
-            <NextImage
-              src={message.attachment.url}
-              alt={message.attachment.name || 'Attached image'}
-              width={300}
-              height={200}
-              className="rounded-md object-contain max-h-60 w-auto"
-              data-ai-hint="attached image"
-            />
+             <ImageDisplay src={message.attachment.url} alt={message.attachment.name || 'Attached image'} name={message.attachment.name} isUserAttachment />
           </div>
         )}
 
         {message.isGeneratingImage && !message.imageUrl && (
-           <div className="flex items-center gap-2 text-muted-foreground p-2 rounded-md bg-background/30">
+           <div className="flex items-center gap-2 text-muted-foreground p-2 rounded-md bg-background/30 mt-2">
             <Loader2 size={16} className="animate-spin" />
             <span>Generating image...</span>
           </div>
         )}
         
         {message.imageUrl && (
-          <div className="mt-2">
-            <NextImage
-              src={message.imageUrl}
-              alt="Generated image"
-              width={400} 
-              height={400}
-              className="rounded-md object-contain max-h-96 w-auto shadow-md"
-              data-ai-hint="generated art"
-            />
-          </div>
+          <ImageDisplay src={message.imageUrl} alt="Generated AI image" name={`ai_image_${message.id}.png`} />
         )}
       </div>
       {isUser && (
