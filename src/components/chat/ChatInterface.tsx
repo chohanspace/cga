@@ -23,14 +23,16 @@ export default function ChatInterface() {
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
 
-  useEffect(() => {
-    setConversationHistory([
-      {
-        id: 'welcome-message-initial',
-        role: 'model',
-        content: `Hello ${currentUser?.username}! I am AbduDev AI, your friendly assistant. How can I help you today? ✨`,
-      },
-    ]);
+ useEffect(() => {
+    if (currentUser?.username) {
+        setConversationHistory([
+        {
+            id: 'welcome-message-initial',
+            role: 'model',
+            content: `Hello ${currentUser.username}! I am AbduDev AI, your friendly assistant. How can I help you today? ✨`,
+        },
+        ]);
+    }
   }, [currentUser]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -78,8 +80,6 @@ export default function ChatInterface() {
         title: 'Error',
         description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
       });
-      // Add the user's message back to the input if AI fails, or let them retry
-      // For simplicity, we'll just show an error.
     } finally {
       setIsLoadingAI(false);
     }
@@ -100,7 +100,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md flex justify-between items-center">
         <h1 className="text-2xl font-headline font-semibold text-primary">
           AbduDev AI
