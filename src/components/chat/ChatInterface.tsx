@@ -109,7 +109,7 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md">
         <h1 className="text-2xl font-headline font-semibold text-primary">
           AbduDev AI

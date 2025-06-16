@@ -8,59 +8,52 @@ body {
 
 @layer base {
   :root {
-    --background: 220 30% 10%; /* Very Dark Blue */
-    --foreground: 200 100% 95%; /* Very Light Cyanish White */
+    --background: 230 25% 12%; /* Deep Indigo/Dark Blue */
+    --foreground: 210 50% 95%; /* Light Cool White */
 
-    --card: 220 30% 15%; /* Slightly Lighter Dark Blue */
-    --card-foreground: 200 100% 95%;
+    --card: 230 25% 18%; /* Slightly Lighter Deep Indigo */
+    --card-foreground: 210 50% 95%;
 
-    --popover: 220 30% 18%; /* Dark Popover */
-    --popover-foreground: 200 100% 95%;
+    --popover: 230 25% 15%; /* Darker Popover */
+    --popover-foreground: 210 50% 95%;
 
-    --primary: 180 70% 50%; /* Vibrant Cyan */
-    --primary-foreground: 220 30% 5%; /* Very Dark Blue/Black for text on Cyan */
+    --primary: 260 85% 65%; /* Vibrant Violet */
+    --primary-foreground: 0 0% 100%; /* White for text on Violet */
 
-    --secondary: 200 60% 40%; /* Muted Cyan/Blue */
-    --secondary-foreground: 200 100% 95%;
+    --secondary: 190 70% 50%; /* Bright Cyan */
+    --secondary-foreground: 230 25% 10%; /* Dark text for Cyan */
 
-    --muted: 220 30% 25%; /* Muted Dark Blue */
+    --muted: 230 25% 25%; /* Muted Indigo */
     --muted-foreground: 220 20% 70%; /* Lighter Muted Foreground */
 
-    --accent: 280 70% 60%; /* Electric Purple/Magenta */
+    --accent: 330 90% 60%; /* Electric Pink/Magenta */
     --accent-foreground: 0 0% 100%; /* White */
 
-    --destructive: 0 60% 50%; /* Vivid Red */
+    --destructive: 0 70% 55%; /* Strong Red */
     --destructive-foreground: 0 0% 100%;
 
-    --border: 200 50% 30%; /* Cyanish Border */
-    --input: 220 30% 20%; /* Dark Input Background */
-    --ring: 180 70% 55%; /* Vibrant Cyan for rings - slightly lighter for visibility */
+    --border: 230 20% 30%; /* Indigo Border */
+    --input: 230 25% 22%; /* Dark Input Background */
+    --ring: 260 85% 70%; /* Vibrant Violet for rings - slightly lighter for visibility */
 
-    --chart-1: 180 70% 60%;
-    --chart-2: 280 70% 70%;
-    --chart-3: 220 60% 65%;
-    --chart-4: 43 74% 66%; /* Keep some variety */
-    --chart-5: 27 87% 67%;
+    --chart-1: 260 85% 70%;
+    --chart-2: 330 90% 65%;
+    --chart-3: 190 70% 55%;
+    --chart-4: 210 60% 60%; 
+    --chart-5: 25 80% 60%; 
 
-    --radius: 0.5rem; /* Default is 0.5rem (rounded-lg), was 0.375rem (rounded-md) */
+    --radius: 0.5rem;
 
     /* Sidebar specific colors - making them consistent with the new dark theme */
-    --sidebar-background: 220 30% 8%; /* Even darker for sidebar */
-    --sidebar-foreground: 200 100% 90%;
-    --sidebar-primary: 180 70% 50%; /* Cyan */
-    --sidebar-primary-foreground: 220 30% 5%;
-    --sidebar-accent: 220 30% 20%;
-    --sidebar-accent-foreground: 200 100% 95%;
-    --sidebar-border: 200 50% 25%;
-    --sidebar-ring: 180 70% 55%;
+    --sidebar-background: 230 25% 10%; /* Even darker for sidebar */
+    --sidebar-foreground: 210 50% 90%;
+    --sidebar-primary: 260 85% 65%; /* Violet */
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 230 25% 20%;
+    --sidebar-accent-foreground: 210 50% 95%;
+    --sidebar-border: 230 20% 25%;
+    --sidebar-ring: 260 85% 70%;
   }
-
-  /* Remove the .dark specific overrides if the base is now the dark theme */
-  /*
-  .dark {
-    ...
-  }
-  */
 }
 
 @layer base {
@@ -69,6 +62,15 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    background-image: linear-gradient(
+      -45deg,
+      hsl(var(--background)),
+      hsl(var(--accent) / 0.25),
+      hsl(var(--primary) / 0.2),
+      hsl(var(--background) / 0.9) 
+    );
+    background-size: 400% 400%;
+    @apply animate-animated-gradient-bg;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
