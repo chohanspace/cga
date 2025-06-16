@@ -122,7 +122,7 @@ export default function MessageItem({ message }: MessageItemProps) {
             : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70'
         )}
       >
-        {message.content && <p className="whitespace-pre-wrap">{renderFormattedMessage(message.content)}</p>}
+        {message.content && <p className="whitespace-pre-wrap select-text">{renderFormattedMessage(message.content)}</p>}
         
         {message.attachment && (
           <div className="mt-2 border-t border-border/30 pt-2">
