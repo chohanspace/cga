@@ -25,7 +25,7 @@ export default function MessageInput({
   return (
     <form
       onSubmit={onSubmit}
-      className="p-4 border-t bg-card flex items-center gap-3"
+      className="p-4 border-t bg-card flex items-center gap-3 shadow-lg" 
     >
       <Button
         type="button"

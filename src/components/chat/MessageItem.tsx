@@ -26,7 +26,7 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
       <div
         className={cn(
-          'max-w-[75%] p-3 shadow-md text-sm', // Consistent text size
+          'max-w-[75%] p-3 shadow-lg text-sm', // Consistent text size, increased shadow
           isUser
             ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/70' // Sharper user bubble
             : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70' // Sharper AI bubble

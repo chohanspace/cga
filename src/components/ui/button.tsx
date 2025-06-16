@@ -9,14 +9,14 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:brightness-110 active:brightness-90",
+        default: "bg-primary text-primary-foreground hover:bg-primary/90 hover:brightness-110 active:brightness-90 hover:shadow-md hover:-translate-y-px",
         destructive:
-          "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:brightness-110 active:brightness-90",
+          "bg-destructive text-destructive-foreground hover:bg-destructive/90 hover:brightness-110 active:brightness-90 hover:shadow-md hover:-translate-y-px",
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:brightness-110 active:brightness-90",
+          "border border-input bg-background hover:bg-accent hover:text-accent-foreground hover:brightness-110 active:brightness-90 hover:shadow-md hover:-translate-y-px",
         secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:brightness-110 active:brightness-90",
-        ghost: "hover:bg-accent hover:text-accent-foreground hover:brightness-110 active:brightness-90",
+          "bg-secondary text-secondary-foreground hover:bg-secondary/80 hover:brightness-110 active:brightness-90 hover:shadow-md hover:-translate-y-px",
+        ghost: "hover:bg-accent hover:text-accent-foreground hover:brightness-110 active:brightness-90 hover:shadow-sm hover:-translate-y-px",
         link: "text-primary underline-offset-4 hover:underline hover:brightness-110 active:brightness-90",
       },
       size: {
