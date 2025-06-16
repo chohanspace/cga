@@ -19,16 +19,6 @@ export default function ChatInterface() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  useEffect(() => {
-    setConversationHistory([
-      {
-        id: 'welcome-message',
-        role: 'model',
-        content: "Hello! I'm AbduDev AI, trained by Abdullah Developers. How can I help you today? 😊",
-      },
-    ]);
-  }, []);
-
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
@@ -46,7 +36,7 @@ export default function ChatInterface() {
     };
 
     const historyForAI = conversationHistory
-      .filter(msg => msg.id !== 'welcome-message' && msg.id !== 'welcome-message-cleared')
+      .filter(msg => msg.id !== 'welcome-message-cleared') 
       .map(msg => ({ role: msg.role, content: msg.content }));
 
     setConversationHistory(prev => [...prev, userMessage]);
@@ -108,7 +98,7 @@ export default function ChatInterface() {
           onSubmit={handleSubmit}
           onClear={handleClearContext}
           isLoading={isLoading}
-          canClear={conversationHistory.filter(msg => msg.id !== 'welcome-message' && msg.id !== 'welcome-message-cleared').length > 0}
+          canClear={conversationHistory.filter(msg => msg.id !== 'welcome-message-cleared').length > 0}
         />
       </main>
     </div>
