@@ -8,52 +8,52 @@ body {
 
 @layer base {
   :root {
-    /* Futuristic Theme: Cyber Indigo & Neon Cyan */
-    --background: 250 30% 6%; /* Dark Indigo */
-    --foreground: 210 20% 90%; /* Light Cool Gray */
+    /* White, Black & Grey Theme */
+    --background: 0 0% 98%; /* Off-white / Very Light Gray */
+    --foreground: 240 10% 3.9%; /* Dark Gray / Near Black */
 
-    --card: 250 25% 10%; /* Slightly lighter Dark Indigo for Cards */
-    --card-foreground: 210 20% 90%;
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 240 10% 3.9%;
 
-    --popover: 250 25% 8%; /* Darker Popover */
-    --popover-foreground: 210 20% 90%;
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 240 10% 3.9%;
 
-    --primary: 190 90% 55%; /* Neon Cyan / Bright Teal */
-    --primary-foreground: 250 30% 6%; /* Dark Indigo for text on primary */
+    --primary: 240 10% 3.9%; /* Dark Gray / Near Black */
+    --primary-foreground: 0 0% 98%; /* Off-white for text on primary */
 
-    --secondary: 230 20% 35%; /* Muted Indigo/Blue-Gray */
-    --secondary-foreground: 210 20% 90%; /* Light Cool Gray for text on secondary */
+    --secondary: 240 4.8% 95.9%; /* Light Gray */
+    --secondary-foreground: 240 5.9% 10%; /* Dark Gray */
 
-    --muted: 240 20% 15%; /* Dark Muted Indigo */
-    --muted-foreground: 220 15% 65%; /* Lighter Muted Foreground */
+    --muted: 240 4.8% 95.9%; /* Light Gray */
+    --muted-foreground: 240 3.8% 46.1%; /* Mid Gray */
 
-    --accent: 300 80% 65%; /* Vibrant Magenta/Pink */
-    --accent-foreground: 0 0% 100%; /* White for text on accent */
+    --accent: 240 3.8% 46.1%; /* Mid Gray */
+    --accent-foreground: 0 0% 98%; /* Off-white for text on accent */
 
-    --destructive: 0 70% 55%; /* Kept for error states */
-    --destructive-foreground: 0 0% 95%; /* White */
+    --destructive: 0 84.2% 60.2%; /* Red for destructive actions */
+    --destructive-foreground: 0 0% 98%; /* Off-white for text on destructive */
 
-    --border: 250 20% 20%; /* Subtle Indigo Border */
-    --input: 250 25% 12%; /* Dark Indigo Input Background */
-    --ring: 190 90% 55%; /* Neon Cyan for rings */
+    --border: 240 5.9% 90%; /* Light Gray Border */
+    --input: 0 0% 100%; /* White Input Background */
+    --ring: 240 4.8% 83.9%; /* Light Gray for rings */
 
-    --chart-1: 190 80% 70%;
-    --chart-2: 190 70% 60%;
-    --chart-3: 300 70% 70%;
-    --chart-4: 300 60% 60%; 
-    --chart-5: 230 30% 50%; 
+    --chart-1: 220 13% 69%;
+    --chart-2: 220 14% 50%;
+    --chart-3: 220 13% 31%;
+    --chart-4: 220 14% 20%; 
+    --chart-5: 220 15% 10%; 
 
     --radius: 0.5rem;
 
-    /* Sidebar specific colors - making them consistent with the futuristic theme */
-    --sidebar-background: 250 40% 4%; /* Even darker Indigo for sidebar */
-    --sidebar-foreground: 210 20% 85%;
-    --sidebar-primary: 190 90% 55%; /* Neon Cyan for primary items in sidebar */
-    --sidebar-primary-foreground: 250 30% 6%; /* Dark Indigo for text */
-    --sidebar-accent: 250 20% 15%;
-    --sidebar-accent-foreground: 210 20% 90%;
-    --sidebar-border: 250 20% 12%;
-    --sidebar-ring: 190 90% 55%;
+    /* Sidebar specific colors - adapting to monochrome */
+    --sidebar-background: 0 0% 96%; /* Slightly darker light gray for sidebar */
+    --sidebar-foreground: 240 10% 3.9%;
+    --sidebar-primary: 240 10% 3.9%; /* Dark Gray for primary items in sidebar */
+    --sidebar-primary-foreground: 0 0% 98%; 
+    --sidebar-accent: 0 0% 90%; /* Lighter gray for accents in sidebar */
+    --sidebar-accent-foreground: 240 10% 3.9%;
+    --sidebar-border: 0 0% 85%;
+    --sidebar-ring: 240 4.8% 83.9%;
   }
 }
 
@@ -63,15 +63,7 @@ body {
   }
   body {
     @apply bg-background text-foreground select-none;
-    background-image: linear-gradient(
-      -45deg,
-      hsl(var(--background)),
-      hsl(190 90% 55% / 0.15), /* Neon Cyan with transparency */
-      hsl(300 80% 65% / 0.1),  /* Vibrant Magenta with transparency */
-      hsl(var(--background) / 0.95) 
-    );
-    background-size: 400% 400%;
-    @apply animate-animated-gradient-bg;
+    /* Removed animated gradient background */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
