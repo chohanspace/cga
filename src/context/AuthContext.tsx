@@ -6,17 +6,17 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
-// Extended User interface
+// Interface for the full user data stored with password
 interface User {
-  username: string; // This will be fixed after signup
+  username: string; // Fixed identifier, used for login
   password?: string; // Only for storage, not for currentUser state directly
-  nickname?: string; // This will be changeable
+  nickname?: string; // Display name, changeable
   mobileNumber?: string;
   email?: string;
   pfpUrl?: string;
 }
 
-// For currentUser state and profile updates, password is not included
+// Interface for the currentUser state and public profile view
 export interface UserProfile {
   username: string; // Fixed identifier
   nickname?: string; // Display name, changeable
@@ -24,14 +24,15 @@ export interface UserProfile {
   email?: string;
   pfpUrl?: string;
 }
-// UserProfileUpdate will not include username
+
+// Type for profile update data; username is not updatable
 export type UserProfileUpdate = Omit<Partial<UserProfile>, 'username'>;
 
 
 interface AuthContextType {
   currentUser: UserProfile | null;
   isLoading: boolean;
-  signup: (userData: User) => Promise<boolean>;
+  signup: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>; // Signup only needs username/password initially
   login: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>;
@@ -79,7 +80,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const signup = useCallback(async (userData: User): Promise<boolean> => {
+  const signup = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
     if (!userData.password || userData.password.length < 6 || userData.password.length > 18) {
       toast({
         variant: 'destructive',
@@ -101,22 +102,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    const newUser: User = {
+    // Create the full User object for storage
+    const newUserForStorage: User = {
         username: userData.username,
         password: userData.password,
-        nickname: userData.nickname || userData.username, // Initialize nickname
-        mobileNumber: userData.mobileNumber || '',
-        email: userData.email || '',
-        pfpUrl: userData.pfpUrl || '',
+        nickname: userData.username, // Default nickname to username
+        mobileNumber: '',
+        email: '',
+        pfpUrl: '',
     };
-    saveUsers([...users, newUser]);
+    saveUsers([...users, newUserForStorage]);
 
+    // Create the UserProfile for currentUser state and CURRENT_USER_STORAGE_KEY
     const userProfile: UserProfile = {
-        username: newUser.username,
-        nickname: newUser.nickname,
-        mobileNumber: newUser.mobileNumber,
-        email: newUser.email,
-        pfpUrl: newUser.pfpUrl,
+        username: newUserForStorage.username,
+        nickname: newUserForStorage.nickname,
+        mobileNumber: newUserForStorage.mobileNumber,
+        email: newUserForStorage.email,
+        pfpUrl: newUserForStorage.pfpUrl,
     };
     setCurrentUser(userProfile);
     try {
@@ -145,12 +148,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
+    // Create UserProfile from the stored User data
     const userProfile: UserProfile = {
         username: user.username,
-        nickname: user.nickname || user.username, // Use nickname or fallback to username
-        mobileNumber: user.mobileNumber,
-        email: user.email,
-        pfpUrl: user.pfpUrl,
+        nickname: user.nickname || user.username, // Fallback to username if nickname isn't set
+        mobileNumber: user.mobileNumber || '',
+        email: user.email || '',
+        pfpUrl: user.pfpUrl || '',
     };
     setCurrentUser(userProfile);
     try {
@@ -181,7 +185,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, toast]);
 
   const updateUserProfile = useCallback(async (profileData: UserProfileUpdate): Promise<boolean> => {
-    if (!currentUser) return false;
+    if (!currentUser) {
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to update your profile.' });
+        return false;
+    }
 
     const users = getUsers();
     const userToUpdateIndex = users.findIndex(u => u.username === currentUser.username);
@@ -191,25 +198,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
     }
 
-    const updatedUser = {
-        ...users[userToUpdateIndex],
-        // Username and password are not changed here
-        nickname: profileData.nickname !== undefined ? profileData.nickname : users[userToUpdateIndex].nickname,
-        mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : users[userToUpdateIndex].mobileNumber,
-        email: profileData.email !== undefined ? profileData.email : users[userToUpdateIndex].email,
-        pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : users[userToUpdateIndex].pfpUrl,
+    // Update the full User object in USERS_STORAGE_KEY
+    const StoredUser = users[userToUpdateIndex];
+    const updatedStoredUser: User = {
+        ...StoredUser, // Keeps username and password
+        nickname: profileData.nickname !== undefined ? (profileData.nickname.trim() === '' ? StoredUser.username : profileData.nickname) : StoredUser.nickname,
+        mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : StoredUser.mobileNumber,
+        email: profileData.email !== undefined ? profileData.email : StoredUser.email,
+        pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : StoredUser.pfpUrl,
     };
+    
+    // If nickname is cleared, default it back to username
+    if (updatedStoredUser.nickname === '') {
+        updatedStoredUser.nickname = updatedStoredUser.username;
+    }
 
-    const updatedUsers = [...users];
-    updatedUsers[userToUpdateIndex] = updatedUser;
-    saveUsers(updatedUsers);
 
+    const updatedUsersArray = [...users];
+    updatedUsersArray[userToUpdateIndex] = updatedStoredUser;
+    saveUsers(updatedUsersArray);
+
+    // Prepare the UserProfile for currentUser state and CURRENT_USER_STORAGE_KEY
     const updatedCurrentUserProfile: UserProfile = {
-      username: currentUser.username, // Username remains the same
-      nickname: updatedUser.nickname,
-      mobileNumber: updatedUser.mobileNumber,
-      email: updatedUser.email,
-      pfpUrl: updatedUser.pfpUrl,
+      username: currentUser.username, // Username remains the same, taken from current state
+      nickname: updatedStoredUser.nickname,
+      mobileNumber: updatedStoredUser.mobileNumber,
+      email: updatedStoredUser.email,
+      pfpUrl: updatedStoredUser.pfpUrl,
     };
 
     setCurrentUser(updatedCurrentUserProfile);
@@ -218,7 +233,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to save updated current user to localStorage", error);
     }
-
+    
+    toast({
+        title: 'Profile Updated',
+        description: 'Your profile details have been saved.',
+    });
     return true;
   }, [currentUser, getUsers, saveUsers, toast]);
 

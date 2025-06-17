@@ -39,7 +39,7 @@ export default function ChatInterface() {
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
-        const displayName = currentUser.nickname || currentUser.username;
+        const displayName = currentUser.nickname || currentUser.username; // Prioritize nickname
         setConversationHistory([
         {
             id: 'welcome-message-initial',
@@ -225,14 +225,16 @@ export default function ChatInterface() {
     <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <ChatMenu
-            currentModel={selectedModel}
-            onModelChange={handleModelChange}
-            availableModels={AVAILABLE_MODELS}
-            onClearContext={handleClearContext}
-            onLogout={logout}
-            onOpenEditProfile={() => setIsEditProfileOpen(true)}
-          />
+          {currentUser && ( // Only show menu if user is logged in
+            <ChatMenu
+              currentModel={selectedModel}
+              onModelChange={handleModelChange}
+              availableModels={AVAILABLE_MODELS}
+              onClearContext={handleClearContext}
+              onLogout={logout}
+              onOpenEditProfile={() => setIsEditProfileOpen(true)}
+            />
+          )}
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
             Harium AI
             <span className="text-sm md:text-base font-normal text-muted-foreground ml-1">({selectedModel})</span>
@@ -258,7 +260,7 @@ export default function ChatInterface() {
           onClearAttachment={handleClearAttachment}
         />
       </main>
-      {currentUser && (
+      {currentUser && ( // Ensure currentUser exists before trying to render EditProfileDialog
         <EditProfileDialog
           isOpen={isEditProfileOpen}
           onOpenChange={setIsEditProfileOpen}
