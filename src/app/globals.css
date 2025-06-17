@@ -60,7 +60,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground select-none font-bold;
+    @apply bg-background text-foreground select-none font-extrabold;
     /* Removed animated gradient background */
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
