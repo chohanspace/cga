@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
+import Image from 'next/image';
 
 export interface Message {
   id: string;
@@ -269,10 +270,17 @@ export default function ChatInterface() {
               onToggleSpeechOutput={toggleSpeechOutput}
             />
           )}
-          <h1 className="text-xl md:text-2xl font-black text-primary">
-            Harium AI
-            <span className="text-xs md:text-sm font-normal text-muted-foreground/80 ml-1.5">({selectedModel})</span>
-          </h1>
+          <div className="flex items-center">
+            <Image 
+              src="/harium-logo.svg" 
+              alt="Harium AI Logo" 
+              width={36} 
+              height={36} 
+              className="h-9 w-9"
+              priority
+            />
+            <span className="text-xs md:text-sm font-normal text-muted-foreground/80 ml-2">({selectedModel})</span>
+          </div>
         </div>
         {currentUser && (
           <div className="flex items-center gap-2">
