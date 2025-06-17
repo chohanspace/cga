@@ -67,7 +67,7 @@ export default function ChatMenu({
                 <Brain className="mr-2 h-4 w-4" />
                 <span>AI Model</span>
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="p-0">
+            <DropdownMenuSubContent className="p-0" collisionPadding={10}>
                  {availableModels.map((model) => (
                     <DropdownMenuItem 
                         key={model} 
