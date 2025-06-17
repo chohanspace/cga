@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates text from a user-provided prompt using the Gemini API.
@@ -29,6 +30,14 @@ const generateTextFromPrompt = ai.definePrompt({
   input: {schema: GenerateTextFromPromptInputSchema},
   output: {schema: GenerateTextFromPromptOutputSchema},
   prompt: `{{prompt}}`,
+  config: {
+    safetySettings: [
+      { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+      { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+    ],
+  },
 });
 
 const generateTextFromPromptFlow = ai.defineFlow(
@@ -42,3 +51,4 @@ const generateTextFromPromptFlow = ai.defineFlow(
     return {response: text!};
   }
 );
+

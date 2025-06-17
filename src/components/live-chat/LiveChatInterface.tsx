@@ -62,7 +62,7 @@ export default function LiveChatInterface() {
       loadedMessages.push({
         id: 'system-welcome',
         sender: { username: 'System', nickname: 'System' },
-        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored locally for 30 mins. Type "@hariumai <your query>" to talk to Harium AI in this chat. This is a frontend simulation; messages are not shared with others in real-time.`,
+        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored locally for 30 mins. Type "${HARIUM_AI_MENTION} <your query>" to talk to Harium AI in this chat. This is a frontend simulation; messages are not shared with others in real-time.`,
         timestamp: Date.now(),
       });
     }
@@ -141,16 +141,14 @@ export default function LiveChatInterface() {
         addMessageToList(thinkingMessage);
 
         try {
-          // For group chat, AI context might be simpler, or we could try to build one.
-          // For now, sending AI prompt directly without extensive history from live chat.
           const aiInput: ManageConversationContextInput = {
             userInput: aiPrompt,
-            conversationHistory: [], // Or try to adapt live chat history if needed
+            conversationHistory: [], 
           };
           const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
           
           const aiResponseMessage: LiveMessage = {
-            id: thinkingMessageId, // Replace the thinking message
+            id: thinkingMessageId, 
             sender: hariumAiProfile,
             content: result.response,
             timestamp: Date.now(),
@@ -165,20 +163,23 @@ export default function LiveChatInterface() {
             description: 'Harium AI could not respond in the chat.',
           });
           const aiErrorMessage: LiveMessage = {
-            id: thinkingMessageId, // Replace thinking message
+            id: thinkingMessageId, 
             sender: hariumAiProfile,
             content: "Sorry, I couldn't process that request.",
             timestamp: Date.now(),
           };
           updateMessageInList(aiErrorMessage);
+        } finally {
+          setIsSending(false);
         }
-      }
-    }
-    // Simulate sending delay for user message if not an AI command, or after AI command processing.
-    // The actual delay is more for the AI response, user message is instant.
-    setTimeout(() => {
+      } else {
+         // Case where "@hariumai " is typed but no prompt follows
         setIsSending(false);
-    }, 300);
+      }
+    } else {
+      // Not an AI command, just a regular user message
+      setIsSending(false);
+    }
   };
   
   const handleGoBack = () => {
@@ -215,3 +216,4 @@ export default function LiveChatInterface() {
     </div>
   );
 }
+

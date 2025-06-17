@@ -237,14 +237,14 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
         <div 
           className="relative group cursor-pointer mt-2 rounded-md overflow-hidden shadow-md w-full aspect-video"
           onClick={() => openImageDialog(src, name)}
-          data-ai-hint={isUserAttachment ? "attached image" : "generated art"}
+          data-ai-hint={isUserAttachment ? "attachment preview" : "generated art"}
         >
           <NextImage
             src={src}
             alt={alt}
-            fill // Changed from layout="fill" to fill
-            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Example sizes, adjust as needed
-            style={{ objectFit: 'cover' }} // Replaces objectFit className
+            fill 
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" 
+            style={{ objectFit: 'cover' }} 
             className="group-hover:opacity-80 transition-opacity"
           />
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center transition-all duration-300">
@@ -359,3 +359,4 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
     </div>
   );
 }
+
