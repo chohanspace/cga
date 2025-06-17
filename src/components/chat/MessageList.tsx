@@ -44,13 +44,13 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
       !lastMessage.imageUrl &&
       !lastMessage.isGeneratingImage &&
       !lastMessage.attachment &&
-      !isLoading // Only observe if not in general loading state (AI is typing for an existing message)
+      !isLoading // Observe only if not in general loading (AI is thinking for new msg)
     ) {
       const lastMessageElement = scrollContainer.lastElementChild;
       if (lastMessageElement instanceof HTMLElement) { 
         observer = new MutationObserver(() => {
-          // Only scroll if the AI generation hasn't been stopped
-          if (!isAiGenerationStopped) {
+          // Scroll 'auto' for fast updates during typing, but only if not stopped
+          if (!isAiGenerationStopped) { // Check prop here
             scrollToBottom('auto'); 
           }
         });
@@ -62,7 +62,7 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
         });
       }
     } else if (isLoading || (lastMessage && lastMessage.role === 'user')) {
-      // If general loading (AI thinking for new message) or user just sent, scroll smoothly
+      // If AI is thinking for a *new* message, or user just sent, scroll smoothly
       scrollToBottom('smooth');
     }
 
@@ -73,7 +73,7 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
         observer.disconnect();
       }
     };
-  }, [messages, isLoading, isAiGenerationStopped]); 
+  }, [messages, isLoading, isAiGenerationStopped]); // Added isAiGenerationStopped to dependencies
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
@@ -83,9 +83,15 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
             key={msg.id} 
             message={msg} 
             isSpeechOutputEnabled={isSpeechOutputEnabled} 
-            isGenerationStopped={isAiGenerationStopped}
+            isGenerationStopped={isAiGenerationStopped} // Pass the prop here
           />
         ))}
+        {/* Show "Harium AI is thinking..." only when:
+            - isLoading is true (meaning a new response is being fetched)
+            - There are messages in the history
+            - The last message was from the user (AI is responding to this user message)
+            - AI generation has not been stopped by the user
+        */}
         {isLoading && messages.length > 0 && messages[messages.length-1].role === 'user' && !isAiGenerationStopped && (
           <div className="flex justify-start animate-message-in">
              <div className="flex items-center gap-2 p-3 rounded-lg bg-card/70 backdrop-blur-sm text-card-foreground border border-border/40 max-w-[70%]">
