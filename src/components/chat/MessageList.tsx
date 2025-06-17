@@ -18,11 +18,11 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
   useEffect(() => {
     const timerId = setTimeout(() => {
       if (contentRef.current?.lastElementChild) {
-        contentRef.current.lastElementChild.scrollIntoView({ block: 'end' });
+        contentRef.current.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
-    }, 0); 
+    }, 100); // Increased delay to 100ms for more robust scrolling
 
-    return () => clearTimeout(timerId); 
+    return () => clearTimeout(timerId);
   }, [messages, isLoading]);
 
   return (
