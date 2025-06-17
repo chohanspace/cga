@@ -72,8 +72,8 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
 
     if (!isDeleting) { 
       if (charIndex < currentConfig.text.length) {
-        setDisplayedText(currentConfig.text.substring(0, charIndex + 1));
         animationStepTimeoutId = setTimeout(() => {
+          setDisplayedText(currentConfig.text.substring(0, charIndex + 1));
           setCharIndex(charIndex + 1);
         }, TYPING_SPEED);
       } else { 
@@ -87,8 +87,8 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
       }
     } else { 
       if (charIndex > 0) {
-        setDisplayedText(currentConfig.text.substring(0, charIndex - 1));
         animationStepTimeoutId = setTimeout(() => {
+          setDisplayedText(currentConfig.text.substring(0, charIndex - 1));
           setCharIndex(charIndex - 1);
         }, DELETING_SPEED);
       } else { 
@@ -147,10 +147,9 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
     <Card className="w-full max-w-sm shadow-2xl border-border/50">
       <CardHeader>
         <CardTitle 
-            className="text-3xl font-bold text-center text-primary flex items-center justify-center h-20" 
+            className="text-3xl font-bold text-center text-primary flex items-center h-20" 
             aria-live="polite"
         >
-          <span className="relative">
             {displayedText}
             <span
               className={cn(
@@ -161,7 +160,6 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
             >
               |
             </span>
-          </span>
         </CardTitle>
         <CardDescription className="text-center pt-2">
           {mode === 'login' ? 'Log in to continue to Harium AI.' : 'Enter your details to get started.'}
