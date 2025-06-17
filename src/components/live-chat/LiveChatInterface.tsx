@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useAuth, type UserProfile } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { cn } from '@/lib/utils';
 
 export interface LiveMessage {
   id: string;
-  sender: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'>; // Only store necessary sender info
+  sender: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'>; 
   content: string;
   timestamp: number;
   isThinking?: boolean;
@@ -29,7 +29,7 @@ const HARIUM_AI_MENTION_TRIGGER = '@hariumai';
 const hariumAiProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
   username: HARIUM_AI_USERNAME,
   nickname: HARIUM_AI_NICKNAME,
-  pfpUrl: '', // No PFP for Harium AI for now
+  pfpUrl: '', 
 };
 
 const SystemProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
@@ -38,11 +38,13 @@ const SystemProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
     pfpUrl: '',
 };
 
-// Simplified Inline LiveMessageItem
+
 const LiveMessageItemSimplified = ({ message, currentUsername }: { message: LiveMessage; currentUsername: string }) => {
   const isCurrentUserMessage = message.sender.username === currentUsername;
   const isSystemMessage = message.sender.username === 'System';
   const isHariumAiMessage = message.sender.username === HARIUM_AI_USERNAME;
+  const { currentUser } = useAuth(); // Get full currentUser for avatar
+
 
   const formatTimestamp = (timestamp: number) => {
     return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
@@ -112,9 +114,9 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
           {formatTimestamp(message.timestamp)}
         </p>
       </div>
-      {isCurrentUserMessage && (
+      {isCurrentUserMessage && currentUser && ( // Added currentUser check
          <Avatar className="h-8 w-8 shrink-0 border border-primary/30 shadow-md self-start">
-          {currentUser?.pfpUrl ? (
+          {currentUser.pfpUrl ? (
             <AvatarImage src={currentUser.pfpUrl} alt={currentUser.nickname || currentUser.username} />
           ) : (
             <AvatarFallback className="bg-primary text-primary-foreground">
@@ -134,7 +136,7 @@ export default function LiveChatInterface() {
     {
       id: 'system-welcome-basic-simplified',
       sender: SystemProfile,
-      content: `Welcome to Live Group Chat! Mention @hariumai to talk to the AI. Messages are local to your browser.`,
+      content: `Welcome to Live Group Chat! Mention @hariumai to talk to the AI. Messages are local.`,
       timestamp: Date.now(),
     }
   ]);
@@ -153,16 +155,6 @@ export default function LiveChatInterface() {
     }, 100);
     return () => clearTimeout(timerId);
   }, [messages]);
-
-  const addMessageToList = useCallback((message: LiveMessage) => {
-    setMessages(prevMessages => [...prevMessages, message]);
-  }, []);
-
-  const updateMessageInList = useCallback((messageId: string, updates: Partial<LiveMessage>) => {
-    setMessages(prevMessages => 
-      prevMessages.map(msg => msg.id === messageId ? { ...msg, ...updates } : msg)
-    );
-  }, []);
 
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -188,8 +180,8 @@ export default function LiveChatInterface() {
       timestamp: Date.now(),
     };
     
-    addMessageToList(userMessage);
-    const originalInputValue = inputValue; // Keep original for AI
+    setMessages(prev => [...prev, userMessage]);
+    const originalInputValue = inputValue; 
     setInputValue('');
     
     if (originalInputValue.toLowerCase().startsWith(HARIUM_AI_MENTION_TRIGGER)) {
@@ -200,16 +192,16 @@ export default function LiveChatInterface() {
         const thinkingMessage: LiveMessage = {
           id: thinkingMessageId,
           sender: hariumAiProfile,
-          content: `Harium AI is thinking about "${aiPrompt.substring(0, 30)}${aiPrompt.length > 30 ? "..." : ""}"`,
+          content: `Harium AI is thinking...`,
           timestamp: Date.now(),
           isThinking: true,
         };
-        addMessageToList(thinkingMessage);
+        setMessages(prev => [...prev, thinkingMessage]);
 
         try {
-          const historyForAI = messages
-            .filter(msg => msg.id !== 'system-welcome-basic-simplified' && !msg.isThinking) // Exclude welcome and previous thinking
-            .slice(-5) // Take last 5 messages for context
+          const historyForAI = messages 
+            .filter(msg => msg.id !== 'system-welcome-basic-simplified' && !msg.isThinking)
+            .slice(-5) 
             .map(msg => ({
               role: msg.sender.username === currentUser.username ? 'user' as const : 'model' as const,
               content: `${msg.sender.nickname || msg.sender.username}: ${msg.content}`,
@@ -217,7 +209,7 @@ export default function LiveChatInterface() {
 
 
           const aiInput: ManageConversationContextInput = {
-            userInput: `The user @${currentUser.nickname || currentUser.username} in a group chat says: ${aiPrompt}`,
+            userInput: `User @${currentUser.nickname || currentUser.username} in group chat says: ${aiPrompt}`,
              conversationHistory: historyForAI,
           };
           const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
@@ -228,7 +220,7 @@ export default function LiveChatInterface() {
             content: result.response,
             timestamp: Date.now(),
           };
-          updateMessageInList(thinkingMessageId, aiResponseMessage); // Replace thinking message
+           setMessages(prev => prev.map(msg => msg.id === thinkingMessageId ? aiResponseMessage : msg));
 
         } catch (error) {
           console.error("Error calling Harium AI:", error);
@@ -236,27 +228,22 @@ export default function LiveChatInterface() {
           const errorMessage: LiveMessage = {
             id: `msg-hariumai-error-${Date.now()}`,
             sender: hariumAiProfile,
-            content: "Sorry, I couldn't process that request.",
+            content: "Sorry, I couldn't process that.",
             timestamp: Date.now(),
           };
-          updateMessageInList(thinkingMessageId, errorMessage);
-        } finally {
-           setIsSending(false);
+          setMessages(prev => prev.map(msg => msg.id === thinkingMessageId ? errorMessage : msg));
         }
       } else {
-        // @hariumai was mentioned but no prompt followed
         const noPromptMessage: LiveMessage = {
           id: `msg-hariumai-noprompt-${Date.now()}`,
           sender: hariumAiProfile,
           content: "You mentioned me! What can I help you with?",
           timestamp: Date.now(),
         };
-        addMessageToList(noPromptMessage);
-        setIsSending(false);
+        setMessages(prev => [...prev, noPromptMessage]);
       }
-    } else {
-      setIsSending(false);
     }
+    setIsSending(false); // General case for user messages or AI no-prompt
   };
   
   const handleGoBack = () => {
@@ -266,13 +253,13 @@ export default function LiveChatInterface() {
   if (!currentUser) { 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen p-4">
-            <p>Loading user information or redirecting...</p>
+            <p>Loading user information...</p>
         </div>
     );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/70 backdrop-blur-md sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
            <Button variant="ghost" size="icon" onClick={handleGoBack} aria-label="Back to AI Chat">
@@ -325,4 +312,3 @@ export default function LiveChatInterface() {
     </div>
   );
 }
-

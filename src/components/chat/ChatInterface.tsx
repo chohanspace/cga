@@ -254,7 +254,7 @@ export default function ChatInterface() {
 
 
   return (
-    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/70 backdrop-blur-md sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
           {currentUser && (
