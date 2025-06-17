@@ -147,7 +147,7 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
     <Card className="w-full max-w-sm shadow-2xl border-border/50">
       <CardHeader>
         <CardTitle 
-            className="text-3xl font-bold text-center text-primary flex items-center h-20" 
+            className="text-3xl font-bold text-primary flex items-center justify-center h-20" 
             aria-live="polite"
         >
             {displayedText}
