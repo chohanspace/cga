@@ -122,7 +122,7 @@ export default function MessageInput({
       recognitionRef.current?.stop();
       setIsListening(false);
     }
-    if (!isLoading) { // Only submit if not loading (i.e., send button is active)
+    if (!isLoading) { 
        onSubmit(inputValue);
     }
   };
@@ -245,18 +245,24 @@ export default function MessageInput({
             aria-label="Stop AI generation"
             variant="destructive"
             size="default" 
+            className="min-w-[80px]"
           >
             <StopCircle size={20} />
             <span className="ml-2 hidden sm:inline">Stop</span>
           </Button>
         ) : (
-          <Button type="submit" disabled={(!inputValue.trim() && !attachedFile) || isListening} aria-label="Send message">
+          <Button 
+            type="submit" 
+            disabled={(!inputValue.trim() && !attachedFile) || isListening} 
+            aria-label="Send message"
+            className="min-w-[80px]"
+          >
             <Send size={20} />
+             <span className="ml-2 hidden sm:inline">Send</span>
           </Button>
         )}
       </form>
     </div>
   );
 }
-
     

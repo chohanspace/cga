@@ -308,25 +308,19 @@ export default function ChatInterface() {
         attachmentDataUri: currentAttachmentDataUri,
       };
       
-      // Start the AI call but don't await immediately to allow quick stop
       const resultPromise = manageConversationContext(aiInput);
 
-      // Brief pause to allow the stop button to register if clicked very fast
       await new Promise(resolve => setTimeout(resolve, 50));
 
       if (isAiGenerationStoppedRef.current) {
-        // Already stopped by user
-        setIsLoadingAI(false);
+        setIsLoadingAI(false); 
         return;
       }
 
       const result: ManageConversationContextOutput = await resultPromise;
       
       if (isAiGenerationStoppedRef.current) {
-        // Stopped by user while AI was processing
-        setIsLoadingAI(false);
-        // Optionally, add a message indicating it was stopped, or just do nothing further.
-        // For now, the MessageItem's typewriter will just stop where it is.
+        setIsLoadingAI(false); 
         return;
       }
 
@@ -343,6 +337,9 @@ export default function ChatInterface() {
         setConversationHistory(prev => [...prev, generatingMessage]);
 
         try {
+          // Check if stopped before starting image generation
+          if (isAiGenerationStoppedRef.current) { setIsLoadingAI(false); return; }
+          
           const imageResult: GenerateImageFromPromptOutput = await generateImageFromPrompt({ prompt: imagePrompt });
           
           if (isAiGenerationStoppedRef.current) {
@@ -386,8 +383,6 @@ export default function ChatInterface() {
 
     } catch (error) {
       if (isAiGenerationStoppedRef.current) {
-        // If it was stopped, the error might be due to an aborted process or irrelevant.
-        // We primarily want to ensure isLoadingAI is false.
         console.log('AI processing was stopped, error likely due to interruption or already handled.');
       } else {
         console.error('Error calling AI:', error);
@@ -404,7 +399,6 @@ export default function ChatInterface() {
         setConversationHistory(prev => [...prev, aiMessage]);
       }
     } finally {
-      // Ensure isLoadingAI is false if not already set by stop or error handling
       if (!isAiGenerationStoppedRef.current) {
         setIsLoadingAI(false);
       }
@@ -415,8 +409,8 @@ export default function ChatInterface() {
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
     }
-    setIsAiGenerationStopped(false); // Reset stop state as well
-    setIsLoadingAI(false); // Ensure loading is off
+    setIsAiGenerationStopped(false); 
+    setIsLoadingAI(false); 
     setConversationHistory([
       {
         id: 'welcome-message-cleared',
@@ -450,7 +444,7 @@ export default function ChatInterface() {
   const toggleSpeechOutput = () => {
     setIsSpeechOutputEnabled(prev => {
         if (prev && window.speechSynthesis && window.speechSynthesis.speaking) {
-            window.speechSynthesis.cancel(); // Cancel speech if turning off
+            window.speechSynthesis.cancel(); 
         }
         return !prev;
     });
@@ -531,5 +525,4 @@ export default function ChatInterface() {
     </div>
   );
 }
-
     

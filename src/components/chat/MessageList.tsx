@@ -44,12 +44,15 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
       !lastMessage.imageUrl &&
       !lastMessage.isGeneratingImage &&
       !lastMessage.attachment &&
-      !isLoading 
+      !isLoading // Only observe if not in general loading state (AI is typing for an existing message)
     ) {
       const lastMessageElement = scrollContainer.lastElementChild;
       if (lastMessageElement instanceof HTMLElement) { 
         observer = new MutationObserver(() => {
-          scrollToBottom('auto'); 
+          // Only scroll if the AI generation hasn't been stopped
+          if (!isAiGenerationStopped) {
+            scrollToBottom('auto'); 
+          }
         });
 
         observer.observe(lastMessageElement, {
@@ -58,7 +61,11 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
           characterData: true, 
         });
       }
+    } else if (isLoading || (lastMessage && lastMessage.role === 'user')) {
+      // If general loading (AI thinking for new message) or user just sent, scroll smoothly
+      scrollToBottom('smooth');
     }
+
 
     return () => {
       clearTimeout(initialScrollTimer);
@@ -66,7 +73,7 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
         observer.disconnect();
       }
     };
-  }, [messages, isLoading]); 
+  }, [messages, isLoading, isAiGenerationStopped]); 
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
@@ -76,7 +83,7 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
             key={msg.id} 
             message={msg} 
             isSpeechOutputEnabled={isSpeechOutputEnabled} 
-            isGenerationStopped={isAiGenerationStopped || (isLoading && msg.role === 'model' && msg.id === messages[messages.length-1]?.id)}
+            isGenerationStopped={isAiGenerationStopped}
           />
         ))}
         {isLoading && messages.length > 0 && messages[messages.length-1].role === 'user' && !isAiGenerationStopped && (
@@ -91,5 +98,4 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
     </ScrollArea>
   );
 }
-
     

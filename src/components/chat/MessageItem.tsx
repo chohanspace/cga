@@ -126,10 +126,7 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
     }
 
     if (isGenerationStopped && message.role === 'model') {
-       // If generation is stopped, display what has been typed so far and don't start new interval.
-       // displayedContent should already hold the partially typed message.
-       // No further action needed here if interval is already cleared by isGenerationStopped changing.
-       return;
+       return; 
     }
 
     if (message.role === 'model' && typeof message.content === 'string') {
@@ -163,8 +160,8 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
       message.role === 'model' &&
       !message.isGeneratingImage &&
       !message.imageUrl &&
-      displayedContent === message.content && // Ensure typewriter is finished (or stopped)
-      !isGenerationStopped && // Only speak if not stopped
+      displayedContent === message.content && 
+      !isGenerationStopped && 
       message.content &&
       typeof window !== 'undefined' && window.speechSynthesis
     ) {
@@ -365,5 +362,4 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
     </div>
   );
 }
-
     
