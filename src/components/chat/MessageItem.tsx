@@ -4,7 +4,7 @@
 import type { Message } from './ChatInterface';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, Bot, Loader2, Download, Eye } from 'lucide-react';
+import { User, Bot, Loader2, Download, Eye, Copy } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import NextImage from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -15,18 +15,83 @@ interface MessageItemProps {
   message: Message;
 }
 
-const TYPEWRITER_SPEED_MS = 30; 
+const TYPEWRITER_SPEED_MS = 30;
 
-const renderFormattedMessage = (text: string) => {
-  const parts = text.split(/(\*\*.*?\*\*)/g);
-  return parts.map((part, index) => {
-    if (part.startsWith('**') && part.endsWith('**')) {
-      return <strong key={index}>{part.slice(2, -2)}</strong>;
-    }
-    if (text === '' && index === 0) return <React.Fragment key={index}>&nbsp;</React.Fragment>;
-    return <React.Fragment key={index}>{part}</React.Fragment>;
-  });
+const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code: string; onCopy: (code: string) => void }) => {
+  const langClass = language ? `language-${language}` : '';
+  return (
+    <div className="relative bg-muted p-3 pr-10 rounded-md my-2 font-code text-sm shadow-inner overflow-x-auto">
+      <Button
+        variant="ghost"
+        size="icon"
+        className="absolute top-1 right-1 h-7 w-7 text-muted-foreground hover:text-foreground z-10"
+        onClick={() => onCopy(code)}
+        aria-label="Copy code"
+      >
+        <Copy size={16} />
+      </Button>
+      {language && <div className="absolute top-[0.3rem] left-2 text-xs text-muted-foreground opacity-70 select-none">{language}</div>}
+      <pre className={cn("pt-4 whitespace-pre-wrap break-words", language && "pt-5")}><code className={langClass}>{code}</code></pre>
+    </div>
+  );
 };
+
+const renderFormattedMessage = (text: string, handleCopyCode: (code: string) => void) => {
+  const codeBlockRegex = /```(\w*)\n([\s\S]*?)\n```/g;
+  const parts: (JSX.Element | string)[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    const [fullMatch, language, codeContent] = match;
+    const plainTextBefore = text.substring(lastIndex, match.index);
+
+    if (plainTextBefore) {
+      plainTextBefore.split(/(\*\*.*?\*\*)/g).forEach((segment, i) => {
+        if (segment.startsWith('**') && segment.endsWith('**')) {
+          parts.push(<strong key={`bold-${lastIndex}-${i}`}>{segment.slice(2, -2)}</strong>);
+        } else if (segment) {
+          parts.push(segment);
+        }
+      });
+    }
+
+    parts.push(
+      <CodeBlockComponent
+        key={`code-${match.index}`}
+        language={language.toLowerCase()}
+        code={codeContent}
+        onCopy={handleCopyCode}
+      />
+    );
+    lastIndex = match.index + fullMatch.length;
+  }
+
+  const remainingText = text.substring(lastIndex);
+  if (remainingText) {
+    remainingText.split(/(\*\*.*?\*\*)/g).forEach((segment, i) => {
+      if (segment.startsWith('**') && segment.endsWith('**')) {
+        parts.push(<strong key={`bold-final-${i}`}>{segment.slice(2, -2)}</strong>);
+      } else if (segment) {
+        parts.push(segment);
+      }
+    });
+  }
+  
+  if (parts.length === 0 && text === '') {
+    return <React.Fragment>&nbsp;</React.Fragment>;
+  }
+  if (parts.length === 0 && text) {
+    return <React.Fragment>{text}</React.Fragment>;
+  }
+
+  return parts.map((part, index) => 
+    typeof part === 'string' 
+      ? <React.Fragment key={`frag-${index}`}>{part}</React.Fragment> 
+      : part
+  );
+};
+
 
 export default function MessageItem({ message }: MessageItemProps) {
   const isUser = message.role === 'user';
@@ -40,7 +105,7 @@ export default function MessageItem({ message }: MessageItemProps) {
 
   useEffect(() => {
     if (isUser || message.isGeneratingImage || message.imageUrl || message.attachment ) {
-      setDisplayedContent(message.content || ''); // Ensure content is at least an empty string
+      setDisplayedContent(message.content || '');
       return;
     }
 
@@ -59,13 +124,13 @@ export default function MessageItem({ message }: MessageItemProps) {
       return () => clearInterval(intervalId);
     } else if (message.role === 'model' && (message.content === undefined || message.content === null)) {
       setDisplayedContent(''); 
-    } else if (message.role === 'model') { // Content exists but might not be a string initially, or is an empty string
+    } else if (message.role === 'model') {
         setDisplayedContent(message.content || '');
     }
   }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment]);
 
 
-  const handleDownload = () => {
+  const handleDownloadImage = () => {
     if (!imageToView) return;
     const link = document.createElement('a');
     link.href = imageToView;
@@ -88,24 +153,36 @@ export default function MessageItem({ message }: MessageItemProps) {
     setImageNameToDownload(name || `generated_image_${Date.now()}.png`);
   };
 
+  const handleCopyCode = (code: string) => {
+    navigator.clipboard.writeText(code)
+      .then(() => {
+        toast({ title: "Code copied to clipboard!", duration: 2000 });
+      })
+      .catch(err => {
+        console.error('Failed to copy code: ', err);
+        toast({ variant: 'destructive', title: "Copy failed", description: "Could not copy code to clipboard.", duration: 2000 });
+      });
+  };
+
   const handleInteractionStart = () => {
     isLongPressTriggeredRef.current = false;
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
-    longPressTimerRef.current = setTimeout(() => {
-      if (message.content) {
+    // Only allow long-press copy for message content, not if interacting with image/code block internals
+    if (message.content && !message.imageUrl && !message.attachment && !message.content.includes('```')) {
+        longPressTimerRef.current = setTimeout(() => {
         navigator.clipboard.writeText(message.content)
-          .then(() => {
+            .then(() => {
             toast({ title: "Copied to clipboard!", duration: 2000 });
-          })
-          .catch(err => {
+            })
+            .catch(err => {
             console.error('Failed to copy text: ', err);
             toast({ variant: 'destructive', title: "Copy failed", description: "Could not copy text to clipboard.", duration: 2000 });
-          });
+            });
         isLongPressTriggeredRef.current = true;
-      }
-    }, 790);
+        }, 790);
+    }
   };
 
   const handleInteractionEnd = () => {
@@ -150,7 +227,7 @@ export default function MessageItem({ message }: MessageItemProps) {
           </div>
           <DialogFooter className="sm:justify-end gap-2">
             <Button variant="outline" onClick={() => {setImageToView(null); setImageNameToDownload(null);}}>Close</Button>
-            <Button onClick={handleDownload}>
+            <Button onClick={handleDownloadImage}>
               <Download size={16} className="mr-2" />
               Download
             </Button>
@@ -184,7 +261,7 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
       <div
         className={cn(
-          'max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-2 select-none',
+          'max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-1 select-none', // Reduced gap-2 to gap-1
           isUser
             ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/70'
             : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70'
@@ -197,10 +274,10 @@ export default function MessageItem({ message }: MessageItemProps) {
         onContextMenu={handleContextMenu}
       >
         {(message.content || (message.role === 'model' && displayedContent !== undefined)) && (
-          <p className="whitespace-pre-wrap">
-            {renderFormattedMessage(displayedContent)}
+          <div className="whitespace-pre-wrap break-words"> {/* Ensures words break to prevent overflow */}
+            {renderFormattedMessage(displayedContent, handleCopyCode)}
             {isAiTyping && <span className="inline-block animate-pulse">|</span>}
-          </p>
+          </div>
         )}
         
         {message.attachment && (
