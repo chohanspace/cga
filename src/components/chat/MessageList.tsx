@@ -1,4 +1,6 @@
 
+'use client';
+
 import type { Message } from './ChatInterface';
 import MessageItem from './MessageItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -16,14 +18,57 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const timerId = setTimeout(() => {
-      if (contentRef.current?.lastElementChild) {
-        contentRef.current.lastElementChild.scrollIntoView({ behavior: 'smooth', block: 'end' });
-      }
-    }, 100); // Increased delay to 100ms for more robust scrolling
+    const scrollContainer = contentRef.current;
+    if (!scrollContainer) return;
 
-    return () => clearTimeout(timerId);
-  }, [messages, isLoading]);
+    const scrollToBottom = (behavior: ScrollBehavior = 'smooth') => {
+      const lastMessageElement = scrollContainer.lastElementChild;
+      if (lastMessageElement) {
+        // Ensure the element is a proper HTMLElement for scrollIntoView
+        if (lastMessageElement instanceof HTMLElement) {
+            lastMessageElement.scrollIntoView({ behavior, block: 'end' });
+        }
+      }
+    };
+
+    // Initial scroll when messages or isLoading changes (e.g., new message bubble added)
+    const initialScrollTimer = setTimeout(() => {
+      scrollToBottom('smooth');
+    }, 100);
+
+    // Setup MutationObserver for continuous scrolling during AI typing
+    const lastMessage = messages[messages.length - 1];
+    let observer: MutationObserver | undefined;
+
+    if (
+      lastMessage &&
+      lastMessage.role === 'model' &&
+      !lastMessage.imageUrl &&
+      !lastMessage.isGeneratingImage &&
+      !lastMessage.attachment &&
+      !isLoading // Only observe if AI is actively typing (not in general loading state)
+    ) {
+      const lastMessageElement = scrollContainer.lastElementChild;
+      if (lastMessageElement instanceof HTMLElement) { // Check if it's an HTMLElement
+        observer = new MutationObserver(() => {
+          scrollToBottom('auto'); // Use 'auto' for instant scroll to keep up with typing
+        });
+
+        observer.observe(lastMessageElement, {
+          childList: true, // For changes in direct children (e.g. if structure changes)
+          subtree: true,   // For changes deeper in the DOM tree (e.g. text nodes)
+          characterData: true, // Specifically for text content changes
+        });
+      }
+    }
+
+    return () => {
+      clearTimeout(initialScrollTimer);
+      if (observer) {
+        observer.disconnect();
+      }
+    };
+  }, [messages, isLoading]); // Re-run effect if messages array or isLoading state changes
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
