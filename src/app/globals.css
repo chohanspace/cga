@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 body {
-  font-family: 'Inter', Arial, Helvetica, sans-serif;
+  font-family: 'Consolas', 'Menlo', 'Monaco', 'Courier New', monospace;
 }
 
 @layer base {
