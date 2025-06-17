@@ -421,11 +421,12 @@ export default function ChatInterface() {
               onToggleSpeechOutput={toggleSpeechOutput}
             />
           )}
-          <div className="flex items-center">
-            <h1 className="font-black text-primary text-2xl md:text-3xl mr-1">
+          <div className="flex items-center gap-2">
+            <span className="w-2.5 h-2.5 bg-foreground rounded-full animate-pulse self-center"></span>
+            <h1 className="font-black text-primary text-2xl md:text-3xl">
               Harium AI
             </h1>
-            <span className="text-xs md:text-sm font-normal text-muted-foreground/80">({selectedModel})</span>
+            <span className="text-xs md:text-sm font-normal text-muted-foreground/80 self-center">({selectedModel})</span>
           </div>
         </div>
         {currentUser && (
