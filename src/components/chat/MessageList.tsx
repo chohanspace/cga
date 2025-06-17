@@ -8,9 +8,10 @@ import { Bot } from 'lucide-react';
 interface MessageListProps {
   messages: Message[];
   isLoading: boolean;
+  isSpeechOutputEnabled: boolean;
 }
 
-export default function MessageList({ messages, isLoading }: MessageListProps) {
+export default function MessageList({ messages, isLoading, isSpeechOutputEnabled }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -19,20 +20,20 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
       if (contentRef.current?.lastElementChild) {
         contentRef.current.lastElementChild.scrollIntoView({ block: 'end' });
       }
-    }, 0); // Defer to next tick to ensure DOM is updated
+    }, 0); 
 
-    return () => clearTimeout(timerId); // Cleanup timeout
+    return () => clearTimeout(timerId); 
   }, [messages, isLoading]);
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
       <div className="p-4 space-y-4" ref={contentRef}>
         {messages.map((msg) => (
-          <MessageItem key={msg.id} message={msg} />
+          <MessageItem key={msg.id} message={msg} isSpeechOutputEnabled={isSpeechOutputEnabled} />
         ))}
         {isLoading && messages.length > 0 && messages[messages.length-1].role === 'user' && (
           <div className="flex justify-start animate-message-in">
-             <div className="flex items-center gap-2 p-3 rounded-lg bg-card text-card-foreground border border-border/70 max-w-[70%]">
+             <div className="flex items-center gap-2 p-3 rounded-lg bg-card/70 backdrop-blur-sm text-card-foreground border border-border/40 max-w-[70%]">
               <Bot size={18} className="text-primary animate-pulse"/>
               <span className="text-sm">Harium AI is thinking...</span>
             </div>

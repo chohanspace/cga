@@ -12,8 +12,9 @@ import {
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users } from 'lucide-react';
+import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
+import { Switch } from '@/components/ui/switch'; // Import Switch
 
 interface ChatMenuProps {
   currentModel: string;
@@ -22,6 +23,8 @@ interface ChatMenuProps {
   onClearContext: () => void;
   onLogout: () => void;
   onOpenEditProfile: () => void;
+  isSpeechOutputEnabled: boolean;
+  onToggleSpeechOutput: () => void;
 }
 
 export default function ChatMenu({
@@ -31,6 +34,8 @@ export default function ChatMenu({
   onClearContext,
   onLogout,
   onOpenEditProfile,
+  isSpeechOutputEnabled,
+  onToggleSpeechOutput,
 }: ChatMenuProps) {
   return (
     <DropdownMenu>
@@ -39,7 +44,7 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="w-64"> {/* Increased width for switch */}
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext}>
@@ -52,6 +57,23 @@ export default function ChatMenu({
               <span>Live Group Chat</span>
             </Link>
           </DropdownMenuItem>
+        </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuGroup>
+          <DropdownMenuLabel>Accessibility</DropdownMenuLabel>
+            <div 
+                className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+                onClick={(e) => e.stopPropagation()} // Prevent menu from closing on switch click
+            >
+                {isSpeechOutputEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
+                <span className="flex-grow">Voice Responses</span>
+                <Switch
+                    checked={isSpeechOutputEnabled}
+                    onCheckedChange={onToggleSpeechOutput}
+                    aria-label="Toggle voice responses"
+                    className="ml-auto"
+                />
+            </div>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>

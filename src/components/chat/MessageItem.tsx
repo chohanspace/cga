@@ -4,8 +4,8 @@
 import type { Message } from './ChatInterface';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, Bot, Loader2, Download, Eye, Copy as CopyIcon } from 'lucide-react'; // Renamed Copy to CopyIcon to avoid naming conflict
-import React, { useState, useEffect } from 'react';
+import { User, Bot, Loader2, Download, Eye, Copy as CopyIcon } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
 import NextImage from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,7 @@ import { useToast } from '@/hooks/use-toast';
 
 interface MessageItemProps {
   message: Message;
+  isSpeechOutputEnabled: boolean;
 }
 
 const TYPEWRITER_SPEED_MS = 30;
@@ -35,6 +36,20 @@ const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code
     </div>
   );
 };
+
+const stripMarkdownForSpeech = (text: string): string => {
+  if (!text) return '';
+  // Remove code blocks (content and markers)
+  let processedText = text.replace(/```(\w*\n)?([\s\S]*?)```/g, '(code snippet)');
+  // Remove bold markers
+  processedText = processedText.replace(/\*\*(.*?)\*\*/g, '$1');
+  // Remove image generation commands if they leak to response
+  processedText = processedText.replace(/\[GENERATE_IMAGE:.*?\]/g, '');
+  // Replace multiple spaces/newlines with a single space
+  processedText = processedText.replace(/\s\s+/g, ' ');
+  return processedText.trim();
+};
+
 
 const renderFormattedMessage = (text: string, handleCopyCode: (code: string) => void) => {
   const codeBlockRegex = /```(\w*)\n([\s\S]*?)\n```/g;
@@ -93,15 +108,21 @@ const renderFormattedMessage = (text: string, handleCopyCode: (code: string) => 
 };
 
 
-export default function MessageItem({ message }: MessageItemProps) {
+export default function MessageItem({ message, isSpeechOutputEnabled }: MessageItemProps) {
   const isUser = message.role === 'user';
   const [imageToView, setImageToView] = useState<string | null>(null);
   const [imageNameToDownload, setImageNameToDownload] = useState<string | null>(null);
   const [displayedContent, setDisplayedContent] = useState<string>('');
   const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
+  const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null);
+
 
   useEffect(() => {
+    if (typewriterIntervalRef.current) {
+      clearInterval(typewriterIntervalRef.current);
+    }
+    
     if (isUser || message.isGeneratingImage || message.imageUrl || message.attachment ) {
       setDisplayedContent(message.content || '');
       return;
@@ -110,22 +131,57 @@ export default function MessageItem({ message }: MessageItemProps) {
     if (message.role === 'model' && typeof message.content === 'string') {
       let charIndex = 0;
       setDisplayedContent(''); 
-      const intervalId = setInterval(() => {
+      typewriterIntervalRef.current = setInterval(() => {
         if (charIndex < message.content.length) {
           const nextChar = message.content.charAt(charIndex);
           setDisplayedContent((prev) => prev + nextChar);
           charIndex++;
         } else {
-          clearInterval(intervalId);
+          if (typewriterIntervalRef.current) clearInterval(typewriterIntervalRef.current);
         }
       }, TYPEWRITER_SPEED_MS);
-      return () => clearInterval(intervalId);
     } else if (message.role === 'model' && (message.content === undefined || message.content === null)) {
       setDisplayedContent(''); 
     } else if (message.role === 'model') {
         setDisplayedContent(message.content || '');
     }
+     return () => {
+      if (typewriterIntervalRef.current) {
+        clearInterval(typewriterIntervalRef.current);
+      }
+    };
   }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment]);
+
+  useEffect(() => {
+    if (
+      isSpeechOutputEnabled &&
+      message.role === 'model' &&
+      !message.isGeneratingImage &&
+      !message.imageUrl &&
+      displayedContent === message.content && // Ensure typewriter is finished
+      message.content &&
+      typeof window !== 'undefined' && window.speechSynthesis
+    ) {
+      if (window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel(); // Cancel previous speech before starting new
+      }
+      const textToSpeak = stripMarkdownForSpeech(message.content);
+      if (textToSpeak) {
+        const utterance = new SpeechSynthesisUtterance(textToSpeak);
+        utterance.lang = typeof window !== "undefined" ? navigator.language : 'en-US';
+        window.speechSynthesis.speak(utterance);
+      }
+    }
+  }, [isSpeechOutputEnabled, message.role, message.content, message.imageUrl, message.isGeneratingImage, displayedContent, message.id]);
+
+  useEffect(() => {
+    // Cleanup speech synthesis on component unmount
+    return () => {
+      if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, []);
 
 
   const handleDownloadImage = () => {
@@ -164,7 +220,8 @@ export default function MessageItem({ message }: MessageItemProps) {
 
   const handleCopyFullMessage = (text: string) => {
     if (!text) return;
-    navigator.clipboard.writeText(text)
+    const textToCopy = stripMarkdownForSpeech(text); // Strip markdown before copying text content
+    navigator.clipboard.writeText(textToCopy)
       .then(() => {
         toast({ title: "Message copied to clipboard!", duration: 2000 });
       })
@@ -185,8 +242,9 @@ export default function MessageItem({ message }: MessageItemProps) {
           <NextImage
             src={src}
             alt={alt}
-            layout="fill"
-            objectFit="cover"
+            fill // Changed from layout="fill" to fill
+            sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" // Example sizes, adjust as needed
+            style={{ objectFit: 'cover' }} // Replaces objectFit className
             className="group-hover:opacity-80 transition-opacity"
           />
           <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-40 flex items-center justify-center transition-all duration-300">
@@ -222,7 +280,9 @@ export default function MessageItem({ message }: MessageItemProps) {
                      typeof message.content === 'string' && 
                      displayedContent.length < message.content.length;
 
-  const hasContentToCopy = message.content && message.content.trim() !== '' && !message.content.includes('```');
+  const hasTextContent = displayedContent && displayedContent.trim() !== '';
+  const containsCodeBlock = message.content && message.content.includes('```');
+  const showCopyButton = hasTextContent && !containsCodeBlock && !message.attachment && !message.imageUrl && !message.isGeneratingImage && isHovered;
 
 
   return (
@@ -249,7 +309,7 @@ export default function MessageItem({ message }: MessageItemProps) {
             : 'bg-card/70 backdrop-blur-sm text-card-foreground rounded-lg rounded-bl-sm border border-border/40'
         )}
       >
-        {hasContentToCopy && isHovered && !message.attachment && !message.imageUrl && !message.isGeneratingImage && (
+        {showCopyButton && (
           <Button
             variant="ghost"
             size="icon"
@@ -257,7 +317,7 @@ export default function MessageItem({ message }: MessageItemProps) {
               "absolute h-6 w-6 text-muted-foreground hover:text-foreground z-10 transition-opacity",
               isUser ? "top-1 left-1" : "top-1 right-1" 
             )}
-            onClick={() => handleCopyFullMessage(message.content)}
+            onClick={() => handleCopyFullMessage(displayedContent)}
             aria-label="Copy message text"
           >
             <CopyIcon size={14} />

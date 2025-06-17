@@ -47,6 +47,7 @@ export default function ChatInterface() {
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
+  const [isSpeechOutputEnabled, setIsSpeechOutputEnabled] = useState(false);
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
@@ -60,10 +61,6 @@ export default function ChatInterface() {
         ]);
     }
   }, [currentUser, selectedModel, conversationHistory.length]);
-
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value);
-  };
   
   const handlePromptSuggestionClick = (promptText: string) => {
     setInputValue(promptText);
@@ -107,16 +104,15 @@ export default function ChatInterface() {
     setAttachedFile(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const currentUserInput = inputValue.trim();
+  const handleSubmit = async (currentInputText: string) => {
+    const finalInput = currentInputText.trim();
 
-    if ((!currentUserInput && !attachedFile) || isLoadingAI) return;
+    if ((!finalInput && !attachedFile) || isLoadingAI) return;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
-      content: currentUserInput,
+      content: finalInput,
       ...(attachedFile ? { attachment: { url: attachedFile.previewUrl, name: attachedFile.name } } : {}),
     };
 
@@ -128,14 +124,14 @@ export default function ChatInterface() {
       }));
 
     setConversationHistory(prev => [...prev, userMessage]);
-    setInputValue('');
+    setInputValue(''); 
     const currentAttachmentDataUri = attachedFile?.dataUri;
-    handleClearAttachment();
+    handleClearAttachment(); 
     setIsLoadingAI(true);
 
     try {
       const aiInput: ManageConversationContextInput = {
-        userInput: currentUserInput,
+        userInput: finalInput,
         conversationHistory: historyForAI,
         attachmentDataUri: currentAttachmentDataUri,
       };
@@ -206,6 +202,9 @@ export default function ChatInterface() {
   };
 
   const handleClearContext = () => {
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+    }
     setConversationHistory([
       {
         id: 'welcome-message-cleared',
@@ -236,6 +235,24 @@ export default function ChatInterface() {
     });
   };
 
+  const toggleSpeechOutput = () => {
+    setIsSpeechOutputEnabled(prev => {
+        if (prev && window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel(); // Cancel speech if turning off
+        }
+        return !prev;
+    });
+  };
+  
+  useEffect(() => {
+    return () => {
+        if (window.speechSynthesis && window.speechSynthesis.speaking) {
+            window.speechSynthesis.cancel();
+        }
+    }
+  }, []);
+
+
   return (
     <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/70 backdrop-blur-md sticky top-0 z-10 shadow-md flex justify-between items-center">
@@ -248,6 +265,8 @@ export default function ChatInterface() {
               onClearContext={handleClearContext}
               onLogout={logout}
               onOpenEditProfile={() => setIsEditProfileOpen(true)}
+              isSpeechOutputEnabled={isSpeechOutputEnabled}
+              onToggleSpeechOutput={toggleSpeechOutput}
             />
           )}
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
@@ -262,10 +281,10 @@ export default function ChatInterface() {
         )}
       </header>
       <main className="flex-grow flex flex-col overflow-hidden">
-        <MessageList messages={conversationHistory} isLoading={isLoadingAI} />
+        <MessageList messages={conversationHistory} isLoading={isLoadingAI} isSpeechOutputEnabled={isSpeechOutputEnabled} />
         <MessageInput
           inputValue={inputValue}
-          onInputChange={handleInputChange}
+          setInputValue={setInputValue}
           onSubmit={handleSubmit}
           onClearContext={handleClearContext}
           isLoading={isLoadingAI}
