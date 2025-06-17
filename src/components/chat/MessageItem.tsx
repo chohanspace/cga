@@ -16,7 +16,7 @@ interface MessageItemProps {
   isSpeechOutputEnabled: boolean;
 }
 
-const TYPEWRITER_SPEED_MS = 30;
+const TYPEWRITER_SPEED_MS = 15;
 
 const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code: string; onCopy: (code: string) => void }) => {
   const langClass = language ? `language-${language}` : '';
