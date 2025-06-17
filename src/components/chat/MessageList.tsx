@@ -16,13 +16,10 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
 
   useEffect(() => {
     const timerId = setTimeout(() => {
-      if (contentRef.current) {
-        const scrollableViewport = contentRef.current.parentElement;
-        if (scrollableViewport) {
-          scrollableViewport.scrollTop = scrollableViewport.scrollHeight;
-        }
+      if (contentRef.current?.lastElementChild) {
+        contentRef.current.lastElementChild.scrollIntoView({ block: 'end' });
       }
-    }, 0); // Defer to next tick
+    }, 0); // Defer to next tick to ensure DOM is updated
 
     return () => clearTimeout(timerId); // Cleanup timeout
   }, [messages, isLoading]);
@@ -34,9 +31,9 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
           <MessageItem key={msg.id} message={msg} />
         ))}
         {isLoading && messages.length > 0 && messages[messages.length-1].role === 'user' && (
-          <div className="flex justify-start">
-             <div className="flex items-center gap-2 p-3 rounded-lg bg-card text-card-foreground border max-w-[70%] animate-pulse">
-              <Bot size={18} className="text-primary"/>
+          <div className="flex justify-start animate-message-in">
+             <div className="flex items-center gap-2 p-3 rounded-lg bg-card text-card-foreground border border-border/70 max-w-[70%]">
+              <Bot size={18} className="text-primary animate-pulse"/>
               <span className="text-sm">AbduDev AI is thinking...</span>
             </div>
           </div>
