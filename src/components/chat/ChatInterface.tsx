@@ -422,7 +422,11 @@ export default function ChatInterface() {
             />
           )}
           <div className="flex items-center gap-2">
-            <span className="w-2.5 h-2.5 bg-foreground rounded-full animate-pulse self-center"></span>
+            <div className="w-8 h-8 bg-foreground rounded-full flex items-center justify-center shadow-md shrink-0">
+              <span className="text-background text-lg font-bold animate-letter-scale-pulse">
+                H
+              </span>
+            </div>
             <h1 className="font-black text-primary text-2xl md:text-3xl">
               Harium AI
             </h1>

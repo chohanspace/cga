@@ -93,11 +93,16 @@ export default {
           '0%': { opacity: '0', transform: 'translateY(10px) scale(0.95)' },
           '100%': { opacity: '1', transform: 'translateY(0) scale(1)' },
         },
+        'letter-scale-pulse': {
+          '0%, 100%': { transform: 'scale(1)', opacity: '0.9' },
+          '50%': { transform: 'scale(1.10)', opacity: '1' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'message-in': 'message-in 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards',
+        'letter-scale-pulse': 'letter-scale-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },
