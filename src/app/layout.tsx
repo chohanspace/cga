@@ -5,8 +5,8 @@ import { Toaster } from "@/components/ui/toaster";
 import { AuthProvider } from '@/context/AuthContext';
 
 export const metadata: Metadata = {
-  title: 'AbduDev AI',
-  description: 'AI Assistant by Abdullah Developers',
+  title: 'Harium AI',
+  description: 'AI Assistant by Harium',
 };
 
 export default function RootLayout({

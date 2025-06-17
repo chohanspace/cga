@@ -34,7 +34,7 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
           <div className="flex justify-start animate-message-in">
              <div className="flex items-center gap-2 p-3 rounded-lg bg-card text-card-foreground border border-border/70 max-w-[70%]">
               <Bot size={18} className="text-primary animate-pulse"/>
-              <span className="text-sm">AbduDev AI is thinking...</span>
+              <span className="text-sm">Harium AI is thinking...</span>
             </div>
           </div>
         )}

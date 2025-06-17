@@ -45,7 +45,7 @@ const manageConversationContextFlow = ai.defineFlow(
     const parts: Array<{ text: string } | { media: { url: string } }> = [];
 
     parts.push({
-      text: `You are AbduDev AI, a helpful and friendly AI assistant trained by Abdullah Developers. Your primary goal is to assist the user. 
+      text: `You are Harium AI, a helpful and friendly AI assistant. Your primary goal is to assist the user. 
 Engage in a conversation with the user, remembering previous turns. 
 When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
 Please use emojis appropriately in your responses to make the conversation more engaging.
@@ -72,7 +72,7 @@ If the user asks a question about an image they attached, answer it directly bas
     parts.push({ text: "\n\nassistant:" });
 
     const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest', // Changed model to gemini-1.5-flash-latest
+      model: 'googleai/gemini-1.5-flash-latest',
       prompt: parts,
       output: { schema: ModelResponseSchema },
       // config: { // You can add safety settings or other configurations here if needed

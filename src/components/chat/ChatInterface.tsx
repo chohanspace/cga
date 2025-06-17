@@ -42,7 +42,7 @@ export default function ChatInterface() {
         {
             id: 'welcome-message-initial',
             role: 'model',
-            content: `Hello ${currentUser.username}! I am AbduDev AI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
+            content: `Hello ${currentUser.username}! I am Harium AI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
         },
         ]);
     }
@@ -178,7 +178,7 @@ export default function ChatInterface() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Failed to get response from AbduDev AI. Please check your configuration and try again.',
+        description: 'Failed to get response from Harium AI. Please check your configuration and try again.',
       });
        const aiMessage: Message = {
         id: `model-error-${Date.now()}`,
@@ -232,7 +232,7 @@ export default function ChatInterface() {
             availableModels={AVAILABLE_MODELS}
           />
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
-            AbduDev AI 
+            Harium AI 
             <span className="text-sm md:text-base font-normal text-muted-foreground ml-1">({selectedModel})</span>
           </h1>
         </div>
