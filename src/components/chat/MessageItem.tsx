@@ -40,7 +40,7 @@ export default function MessageItem({ message }: MessageItemProps) {
 
   useEffect(() => {
     if (isUser || message.isGeneratingImage || message.imageUrl || message.attachment ) {
-      setDisplayedContent(message.content);
+      setDisplayedContent(message.content || ''); // Ensure content is at least an empty string
       return;
     }
 
@@ -49,15 +49,18 @@ export default function MessageItem({ message }: MessageItemProps) {
       setDisplayedContent(''); 
       const intervalId = setInterval(() => {
         if (charIndex < message.content.length) {
-          setDisplayedContent((prev) => prev + message.content[charIndex]);
+          const nextChar = message.content.charAt(charIndex);
+          setDisplayedContent((prev) => prev + nextChar);
           charIndex++;
         } else {
           clearInterval(intervalId);
         }
       }, TYPEWRITER_SPEED_MS);
       return () => clearInterval(intervalId);
-    } else if (message.role === 'model' && !message.content) {
-      setDisplayedContent(''); // Handle empty model messages
+    } else if (message.role === 'model' && (message.content === undefined || message.content === null)) {
+      setDisplayedContent(''); 
+    } else if (message.role === 'model') { // Content exists but might not be a string initially, or is an empty string
+        setDisplayedContent(message.content || '');
     }
   }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment]);
 
@@ -162,7 +165,7 @@ export default function MessageItem({ message }: MessageItemProps) {
                      !message.imageUrl && 
                      !message.attachment &&
                      message.content && 
-                     typeof message.content === 'string' && // Ensure content is a string
+                     typeof message.content === 'string' && 
                      displayedContent.length < message.content.length;
 
   return (
