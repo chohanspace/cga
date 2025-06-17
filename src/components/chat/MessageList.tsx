@@ -15,12 +15,16 @@ export default function MessageList({ messages, isLoading }: MessageListProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (contentRef.current) {
-      const scrollableViewport = contentRef.current.parentElement;
-      if (scrollableViewport) {
-        scrollableViewport.scrollTop = scrollableViewport.scrollHeight;
+    const timerId = setTimeout(() => {
+      if (contentRef.current) {
+        const scrollableViewport = contentRef.current.parentElement;
+        if (scrollableViewport) {
+          scrollableViewport.scrollTop = scrollableViewport.scrollHeight;
+        }
       }
-    }
+    }, 0); // Defer to next tick
+
+    return () => clearTimeout(timerId); // Cleanup timeout
   }, [messages, isLoading]);
 
   return (
