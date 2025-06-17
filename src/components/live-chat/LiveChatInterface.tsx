@@ -17,7 +17,10 @@ export interface LiveMessage {
   timestamp: number;
 }
 
-const MAX_MESSAGES = 100; // Limit the number of messages stored in state
+const MAX_MESSAGES = 100; // Limit the number of messages stored
+const LIVE_CHAT_MESSAGES_KEY = 'harium_live_chat_messages';
+const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+
 
 export default function LiveChatInterface() {
   const [inputValue, setInputValue] = useState('');
@@ -27,19 +30,44 @@ export default function LiveChatInterface() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Placeholder: Welcome message
   useEffect(() => {
-    if (currentUser && messages.length === 0) {
-      setMessages([
-        {
-          id: 'system-welcome',
-          sender: { username: 'System', nickname: 'System' }, // Mock system user
-          content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! This is a frontend simulation. Messages are not saved permanently or shared with other users in real-time.`,
-          timestamp: Date.now(),
-        },
-      ]);
+    if (!currentUser) return;
+
+    let loadedMessages: LiveMessage[] = [];
+    const storedMessages = localStorage.getItem(LIVE_CHAT_MESSAGES_KEY);
+    const now = Date.now();
+
+    if (storedMessages) {
+      try {
+        const parsedMessages: LiveMessage[] = JSON.parse(storedMessages);
+        loadedMessages = parsedMessages.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
+      } catch (e) {
+        console.error("Failed to parse live chat messages from localStorage", e);
+        localStorage.removeItem(LIVE_CHAT_MESSAGES_KEY); // Clear corrupted data
+      }
     }
-  }, [currentUser, messages.length]);
+
+    if (loadedMessages.length === 0) {
+      loadedMessages.push({
+        id: 'system-welcome',
+        sender: { username: 'System', nickname: 'System' },
+        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored in your browser for 30 minutes. This is a frontend simulation; messages are not shared with others in real-time.`,
+        timestamp: Date.now(),
+      });
+    }
+    
+    const finalInitialMessages = loadedMessages.slice(-MAX_MESSAGES);
+    setMessages(finalInitialMessages);
+
+    // Save the potentially cleaned/welcomed list back to localStorage
+    try {
+      localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalInitialMessages));
+    } catch (e) {
+        console.error("Failed to save initial messages to localStorage", e);
+    }
+
+  }, [currentUser]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
@@ -60,20 +88,30 @@ export default function LiveChatInterface() {
       timestamp: Date.now(),
     };
 
-    // Simulate sending delay and add message
+    // Simulate sending delay
     setTimeout(() => {
       setMessages(prevMessages => {
-        const updatedMessages = [...prevMessages, newMessage];
-        // Keep only the last MAX_MESSAGES
-        return updatedMessages.slice(-MAX_MESSAGES);
+        const now = Date.now();
+        const updatedWithNew = [...prevMessages, newMessage];
+        // Filter by timestamp first, then cap by MAX_MESSAGES
+        const recentMessages = updatedWithNew.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
+        const finalMessages = recentMessages.slice(-MAX_MESSAGES);
+        
+        try {
+          localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalMessages));
+        } catch (storageError) {
+          console.error("Failed to save messages to localStorage", storageError);
+          toast({ variant: "destructive", title: "Storage Error", description: "Could not save message locally." });
+        }
+        return finalMessages;
       });
       setInputValue('');
       setIsSending(false);
-    }, 300); // Short delay to simulate network
+    }, 300); 
   };
   
   const handleGoBack = () => {
-    router.push('/'); // Navigate to AI chat or main page
+    router.push('/'); 
   };
 
   return (
