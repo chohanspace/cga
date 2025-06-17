@@ -9,17 +9,28 @@ import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
 
 export interface LiveMessage {
   id: string;
-  sender: UserProfile;
+  sender: UserProfile; // Can be a regular user or Harium AI
   content: string;
   timestamp: number;
+  isThinking?: boolean; // For AI "thinking" state
 }
 
-const MAX_MESSAGES = 100; // Limit the number of messages stored
+const MAX_MESSAGES = 100;
 const LIVE_CHAT_MESSAGES_KEY = 'harium_live_chat_messages';
 const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const HARIUM_AI_USERNAME = 'HariumAI_Assistant';
+const HARIUM_AI_NICKNAME = 'Harium AI';
+const HARIUM_AI_MENTION = '@hariumai';
+
+const hariumAiProfile: UserProfile = {
+  username: HARIUM_AI_USERNAME,
+  nickname: HARIUM_AI_NICKNAME,
+  pfpUrl: '', // Could add a specific bot PFP URL later
+};
 
 
 export default function LiveChatInterface() {
@@ -43,7 +54,7 @@ export default function LiveChatInterface() {
         loadedMessages = parsedMessages.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
       } catch (e) {
         console.error("Failed to parse live chat messages from localStorage", e);
-        localStorage.removeItem(LIVE_CHAT_MESSAGES_KEY); // Clear corrupted data
+        localStorage.removeItem(LIVE_CHAT_MESSAGES_KEY);
       }
     }
 
@@ -51,7 +62,7 @@ export default function LiveChatInterface() {
       loadedMessages.push({
         id: 'system-welcome',
         sender: { username: 'System', nickname: 'System' },
-        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored in your browser for 30 minutes. This is a frontend simulation; messages are not shared with others in real-time.`,
+        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored locally for 30 mins. Type "@hariumai <your query>" to talk to Harium AI in this chat. This is a frontend simulation; messages are not shared with others in real-time.`,
         timestamp: Date.now(),
       });
     }
@@ -59,7 +70,6 @@ export default function LiveChatInterface() {
     const finalInitialMessages = loadedMessages.slice(-MAX_MESSAGES);
     setMessages(finalInitialMessages);
 
-    // Save the potentially cleaned/welcomed list back to localStorage
     try {
       localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalInitialMessages));
     } catch (e) {
@@ -68,10 +78,37 @@ export default function LiveChatInterface() {
 
   }, [currentUser]);
 
+  const saveMessagesToLocalStorage = useCallback((msgs: LiveMessage[]) => {
+    try {
+      const now = Date.now();
+      const recentMessages = msgs.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
+      const finalMessages = recentMessages.slice(-MAX_MESSAGES);
+      localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalMessages));
+      return finalMessages;
+    } catch (storageError) {
+      console.error("Failed to save messages to localStorage", storageError);
+      toast({ variant: "destructive", title: "Storage Error", description: "Could not save message locally." });
+      return msgs; // Return original if save fails
+    }
+  }, [toast]);
+
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
+
+  const addMessageToList = (newMessage: LiveMessage) => {
+    setMessages(prevMessages => saveMessagesToLocalStorage([...prevMessages, newMessage]));
+  };
+
+  const updateMessageInList = (updatedMessage: LiveMessage) => {
+    setMessages(prevMessages =>
+      saveMessagesToLocalStorage(
+        prevMessages.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
+      )
+    );
+  };
+
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -81,33 +118,67 @@ export default function LiveChatInterface() {
 
     setIsSending(true);
 
-    const newMessage: LiveMessage = {
-      id: `msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    const userMessage: LiveMessage = {
+      id: `msg-user-${Date.now()}`,
       sender: currentUser,
       content,
       timestamp: Date.now(),
     };
+    addMessageToList(userMessage);
+    setInputValue('');
 
-    // Simulate sending delay
-    setTimeout(() => {
-      setMessages(prevMessages => {
-        const now = Date.now();
-        const updatedWithNew = [...prevMessages, newMessage];
-        // Filter by timestamp first, then cap by MAX_MESSAGES
-        const recentMessages = updatedWithNew.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
-        const finalMessages = recentMessages.slice(-MAX_MESSAGES);
-        
+    if (content.toLowerCase().startsWith(HARIUM_AI_MENTION.toLowerCase() + ' ')) {
+      const aiPrompt = content.substring(HARIUM_AI_MENTION.length + 1).trim();
+      if (aiPrompt) {
+        const thinkingMessageId = `msg-ai-thinking-${Date.now()}`;
+        const thinkingMessage: LiveMessage = {
+          id: thinkingMessageId,
+          sender: hariumAiProfile,
+          content: `${HARIUM_AI_NICKNAME} is thinking...`,
+          timestamp: Date.now(),
+          isThinking: true,
+        };
+        addMessageToList(thinkingMessage);
+
         try {
-          localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalMessages));
-        } catch (storageError) {
-          console.error("Failed to save messages to localStorage", storageError);
-          toast({ variant: "destructive", title: "Storage Error", description: "Could not save message locally." });
+          // For group chat, AI context might be simpler, or we could try to build one.
+          // For now, sending AI prompt directly without extensive history from live chat.
+          const aiInput: ManageConversationContextInput = {
+            userInput: aiPrompt,
+            conversationHistory: [], // Or try to adapt live chat history if needed
+          };
+          const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
+          
+          const aiResponseMessage: LiveMessage = {
+            id: thinkingMessageId, // Replace the thinking message
+            sender: hariumAiProfile,
+            content: result.response,
+            timestamp: Date.now(),
+          };
+          updateMessageInList(aiResponseMessage);
+
+        } catch (error) {
+          console.error('Error calling Harium AI in live chat:', error);
+          toast({
+            variant: 'destructive',
+            title: 'AI Error',
+            description: 'Harium AI could not respond in the chat.',
+          });
+          const aiErrorMessage: LiveMessage = {
+            id: thinkingMessageId, // Replace thinking message
+            sender: hariumAiProfile,
+            content: "Sorry, I couldn't process that request.",
+            timestamp: Date.now(),
+          };
+          updateMessageInList(aiErrorMessage);
         }
-        return finalMessages;
-      });
-      setInputValue('');
-      setIsSending(false);
-    }, 300); 
+      }
+    }
+    // Simulate sending delay for user message if not an AI command, or after AI command processing.
+    // The actual delay is more for the AI response, user message is instant.
+    setTimeout(() => {
+        setIsSending(false);
+    }, 300);
   };
   
   const handleGoBack = () => {
