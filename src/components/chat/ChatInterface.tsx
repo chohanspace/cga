@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import MessageList from './MessageList';
 import MessageInput from './MessageInput';
 import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
@@ -200,6 +200,12 @@ export default function ChatInterface() {
   const { currentUser, logout } = useAuth();
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
   const [isSpeechOutputEnabled, setIsSpeechOutputEnabled] = useState(false);
+  const [isAiGenerationStopped, setIsAiGenerationStopped] = useState(false);
+  const isAiGenerationStoppedRef = useRef(isAiGenerationStopped);
+
+  useEffect(() => {
+    isAiGenerationStoppedRef.current = isAiGenerationStopped;
+  }, [isAiGenerationStopped]);
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
@@ -256,10 +262,24 @@ export default function ChatInterface() {
     setAttachedFile(null);
   };
 
+  const handleStopAiGeneration = useCallback(() => {
+    setIsAiGenerationStopped(true);
+    setIsLoadingAI(false);
+    if (window.speechSynthesis && window.speechSynthesis.speaking) {
+      window.speechSynthesis.cancel();
+    }
+    toast({
+      title: 'AI Generation Stopped',
+      description: 'The AI response has been halted.',
+    });
+  }, [toast]);
+
   const handleSubmit = async (currentInputText: string) => {
     const finalInput = currentInputText.trim();
 
     if ((!finalInput && !attachedFile) || isLoadingAI) return;
+
+    setIsAiGenerationStopped(false); 
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
@@ -287,8 +307,29 @@ export default function ChatInterface() {
         conversationHistory: historyForAI,
         attachmentDataUri: currentAttachmentDataUri,
       };
+      
+      // Start the AI call but don't await immediately to allow quick stop
+      const resultPromise = manageConversationContext(aiInput);
 
-      const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
+      // Brief pause to allow the stop button to register if clicked very fast
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      if (isAiGenerationStoppedRef.current) {
+        // Already stopped by user
+        setIsLoadingAI(false);
+        return;
+      }
+
+      const result: ManageConversationContextOutput = await resultPromise;
+      
+      if (isAiGenerationStoppedRef.current) {
+        // Stopped by user while AI was processing
+        setIsLoadingAI(false);
+        // Optionally, add a message indicating it was stopped, or just do nothing further.
+        // For now, the MessageItem's typewriter will just stop where it is.
+        return;
+      }
+
 
       if (result.response.startsWith(GENERATE_IMAGE_COMMAND)) {
         const imagePrompt = result.response.substring(GENERATE_IMAGE_COMMAND.length, result.response.length - 1).trim();
@@ -303,6 +344,11 @@ export default function ChatInterface() {
 
         try {
           const imageResult: GenerateImageFromPromptOutput = await generateImageFromPrompt({ prompt: imagePrompt });
+          
+          if (isAiGenerationStoppedRef.current) {
+             setIsLoadingAI(false); return;
+          }
+
           const imageMessage: Message = {
             id: `model-image-${Date.now()}`,
             role: 'model',
@@ -313,6 +359,9 @@ export default function ChatInterface() {
 
         } catch (imageError) {
           console.error('Error generating image:', imageError);
+          if (isAiGenerationStoppedRef.current) {
+            setIsLoadingAI(false); return;
+          }
           const errorMsg: Message = {
             id: `model-error-${Date.now()}`,
             role: 'model',
@@ -336,20 +385,29 @@ export default function ChatInterface() {
       }
 
     } catch (error) {
-      console.error('Error calling AI:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to get response from Harium AI. Please check your configuration and try again.',
-      });
-       const aiMessage: Message = {
-        id: `model-error-${Date.now()}`,
-        role: 'model',
-        content: "I encountered an error. Please try again.",
-      };
-      setConversationHistory(prev => [...prev, aiMessage]);
+      if (isAiGenerationStoppedRef.current) {
+        // If it was stopped, the error might be due to an aborted process or irrelevant.
+        // We primarily want to ensure isLoadingAI is false.
+        console.log('AI processing was stopped, error likely due to interruption or already handled.');
+      } else {
+        console.error('Error calling AI:', error);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to get response from Harium AI. Please check your configuration and try again.',
+        });
+        const aiMessage: Message = {
+          id: `model-error-${Date.now()}`,
+          role: 'model',
+          content: "I encountered an error. Please try again.",
+        };
+        setConversationHistory(prev => [...prev, aiMessage]);
+      }
     } finally {
-      setIsLoadingAI(false);
+      // Ensure isLoadingAI is false if not already set by stop or error handling
+      if (!isAiGenerationStoppedRef.current) {
+        setIsLoadingAI(false);
+      }
     }
   };
 
@@ -357,6 +415,8 @@ export default function ChatInterface() {
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
     }
+    setIsAiGenerationStopped(false); // Reset stop state as well
+    setIsLoadingAI(false); // Ensure loading is off
     setConversationHistory([
       {
         id: 'welcome-message-cleared',
@@ -440,7 +500,12 @@ export default function ChatInterface() {
         )}
       </header>
       <main className="flex-grow flex flex-col overflow-hidden">
-        <MessageList messages={conversationHistory} isLoading={isLoadingAI} isSpeechOutputEnabled={isSpeechOutputEnabled} />
+        <MessageList 
+            messages={conversationHistory} 
+            isLoading={isLoadingAI} 
+            isSpeechOutputEnabled={isSpeechOutputEnabled}
+            isAiGenerationStopped={isAiGenerationStopped} 
+        />
         <MessageInput
           inputValue={inputValue}
           setInputValue={setInputValue}
@@ -453,6 +518,7 @@ export default function ChatInterface() {
           onClearAttachment={handleClearAttachment}
           samplePrompts={samplePrompts}
           onPromptSuggestionClick={handlePromptSuggestionClick}
+          onStopAiGeneration={handleStopAiGeneration}
         />
       </main>
       {currentUser && (
@@ -465,3 +531,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+    

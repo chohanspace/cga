@@ -5,7 +5,7 @@ import type React from 'react';
 import { useRef, useState, useEffect }  from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Trash2, Loader2, Paperclip, X, Mic, MicOff } from 'lucide-react';
+import { Send, Trash2, Loader2, Paperclip, X, Mic, MicOff, StopCircle } from 'lucide-react';
 import Image from 'next/image';
 import PromptSuggestions from './PromptSuggestions';
 import { useToast } from '@/hooks/use-toast';
@@ -24,6 +24,7 @@ interface MessageInputProps {
   onClearAttachment: () => void;
   samplePrompts: string[];
   onPromptSuggestionClick: (promptText: string) => void;
+  onStopAiGeneration: () => void;
 }
 
 export default function MessageInput({
@@ -38,6 +39,7 @@ export default function MessageInput({
   onClearAttachment,
   samplePrompts,
   onPromptSuggestionClick,
+  onStopAiGeneration,
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
@@ -48,14 +50,13 @@ export default function MessageInput({
   useEffect(() => {
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognitionAPI) {
-      // We can toast once, or disable mic button. For now, just log and button won't work.
       console.warn("Speech recognition not supported by this browser.");
       return;
     }
 
     const recognition = new SpeechRecognitionAPI();
-    recognition.continuous = false; // Process speech after a pause
-    recognition.interimResults = false; // Only final results for simplicity
+    recognition.continuous = false; 
+    recognition.interimResults = false; 
     recognition.lang = typeof window !== "undefined" ? navigator.language : 'en-US';
 
     recognition.onresult = (event) => {
@@ -104,7 +105,7 @@ export default function MessageInput({
       recognitionRef.current.stop();
     } else {
       try {
-        setInputValue(''); // Clear input when starting new voice input
+        setInputValue(''); 
         recognitionRef.current.start();
         setIsListening(true);
       } catch (e) {
@@ -121,7 +122,9 @@ export default function MessageInput({
       recognitionRef.current?.stop();
       setIsListening(false);
     }
-    onSubmit(inputValue);
+    if (!isLoading) { // Only submit if not loading (i.e., send button is active)
+       onSubmit(inputValue);
+    }
   };
 
 
@@ -234,14 +237,26 @@ export default function MessageInput({
         >
           {isListening ? <MicOff size={20} /> : <Mic size={20} />}
         </Button>
-        <Button type="submit" disabled={isLoading || (!inputValue.trim() && !attachedFile) || isListening} aria-label="Send message">
-          {isLoading ? (
-            <Loader2 size={20} className="animate-spin" />
-          ) : (
+        
+        {isLoading ? (
+          <Button
+            type="button" 
+            onClick={onStopAiGeneration}
+            aria-label="Stop AI generation"
+            variant="destructive"
+            size="default" 
+          >
+            <StopCircle size={20} />
+            <span className="ml-2 hidden sm:inline">Stop</span>
+          </Button>
+        ) : (
+          <Button type="submit" disabled={(!inputValue.trim() && !attachedFile) || isListening} aria-label="Send message">
             <Send size={20} />
-          )}
-        </Button>
+          </Button>
+        )}
       </form>
     </div>
   );
 }
+
+    

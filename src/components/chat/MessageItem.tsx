@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 interface MessageItemProps {
   message: Message;
   isSpeechOutputEnabled: boolean;
+  isGenerationStopped: boolean;
 }
 
 const TYPEWRITER_SPEED_MS = 15;
@@ -39,13 +40,9 @@ const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code
 
 const stripMarkdownForSpeech = (text: string): string => {
   if (!text) return '';
-  // Remove code blocks (content and markers)
   let processedText = text.replace(/```(\w*\n)?([\s\S]*?)```/g, '(code snippet)');
-  // Remove bold markers
   processedText = processedText.replace(/\*\*(.*?)\*\*/g, '$1');
-  // Remove image generation commands if they leak to response
   processedText = processedText.replace(/\[GENERATE_IMAGE:.*?\]/g, '');
-  // Replace multiple spaces/newlines with a single space
   processedText = processedText.replace(/\s\s+/g, ' ');
   return processedText.trim();
 };
@@ -108,7 +105,7 @@ const renderFormattedMessage = (text: string, handleCopyCode: (code: string) => 
 };
 
 
-export default function MessageItem({ message, isSpeechOutputEnabled }: MessageItemProps) {
+export default function MessageItem({ message, isSpeechOutputEnabled, isGenerationStopped }: MessageItemProps) {
   const isUser = message.role === 'user';
   const [imageToView, setImageToView] = useState<string | null>(null);
   const [imageNameToDownload, setImageNameToDownload] = useState<string | null>(null);
@@ -128,6 +125,13 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
       return;
     }
 
+    if (isGenerationStopped && message.role === 'model') {
+       // If generation is stopped, display what has been typed so far and don't start new interval.
+       // displayedContent should already hold the partially typed message.
+       // No further action needed here if interval is already cleared by isGenerationStopped changing.
+       return;
+    }
+
     if (message.role === 'model' && typeof message.content === 'string') {
       let charIndex = 0;
       setDisplayedContent(''); 
@@ -145,12 +149,13 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
     } else if (message.role === 'model') {
         setDisplayedContent(message.content || '');
     }
+
      return () => {
       if (typewriterIntervalRef.current) {
         clearInterval(typewriterIntervalRef.current);
       }
     };
-  }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment]);
+  }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment, isGenerationStopped]);
 
   useEffect(() => {
     if (
@@ -158,12 +163,13 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
       message.role === 'model' &&
       !message.isGeneratingImage &&
       !message.imageUrl &&
-      displayedContent === message.content && // Ensure typewriter is finished
+      displayedContent === message.content && // Ensure typewriter is finished (or stopped)
+      !isGenerationStopped && // Only speak if not stopped
       message.content &&
       typeof window !== 'undefined' && window.speechSynthesis
     ) {
       if (window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel(); // Cancel previous speech before starting new
+        window.speechSynthesis.cancel(); 
       }
       const textToSpeak = stripMarkdownForSpeech(message.content);
       if (textToSpeak) {
@@ -172,10 +178,9 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
         window.speechSynthesis.speak(utterance);
       }
     }
-  }, [isSpeechOutputEnabled, message.role, message.content, message.imageUrl, message.isGeneratingImage, displayedContent, message.id]);
+  }, [isSpeechOutputEnabled, message.role, message.content, message.imageUrl, message.isGeneratingImage, displayedContent, message.id, isGenerationStopped]);
 
   useEffect(() => {
-    // Cleanup speech synthesis on component unmount
     return () => {
       if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -220,7 +225,7 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
 
   const handleCopyFullMessage = (text: string) => {
     if (!text) return;
-    const textToCopy = stripMarkdownForSpeech(text); // Strip markdown before copying text content
+    const textToCopy = stripMarkdownForSpeech(text); 
     navigator.clipboard.writeText(textToCopy)
       .then(() => {
         toast({ title: "Message copied to clipboard!", duration: 2000 });
@@ -273,6 +278,7 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
   );
 
   const isAiTyping = message.role === 'model' && 
+                     !isGenerationStopped &&
                      !message.isGeneratingImage &&
                      !message.imageUrl && 
                      !message.attachment &&
@@ -360,3 +366,4 @@ export default function MessageItem({ message, isSpeechOutputEnabled }: MessageI
   );
 }
 
+    
