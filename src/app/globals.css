@@ -8,51 +8,52 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 5%; /* Near Black */
-    --foreground: 0 0% 95%; /* Near White */
+    /* Futuristic Theme: Cyber Indigo & Neon Cyan */
+    --background: 250 30% 6%; /* Dark Indigo */
+    --foreground: 210 20% 90%; /* Light Cool Gray */
 
-    --card: 0 0% 10%; /* Dark Gray for Cards */
-    --card-foreground: 0 0% 95%;
+    --card: 250 25% 10%; /* Slightly lighter Dark Indigo for Cards */
+    --card-foreground: 210 20% 90%;
 
-    --popover: 0 0% 8%; /* Darker Popover */
-    --popover-foreground: 0 0% 95%;
+    --popover: 250 25% 8%; /* Darker Popover */
+    --popover-foreground: 210 20% 90%;
 
-    --primary: 0 0% 90%; /* Light Gray - for primary elements, acting as 'white' */
-    --primary-foreground: 0 0% 5%; /* Black - for text on primary */
+    --primary: 190 90% 55%; /* Neon Cyan / Bright Teal */
+    --primary-foreground: 250 30% 6%; /* Dark Indigo for text on primary */
 
-    --secondary: 0 0% 50%; /* Mid Gray */
-    --secondary-foreground: 0 0% 5%; /* Black - for text on secondary */
+    --secondary: 230 20% 35%; /* Muted Indigo/Blue-Gray */
+    --secondary-foreground: 210 20% 90%; /* Light Cool Gray for text on secondary */
 
-    --muted: 0 0% 20%; /* Muted Dark Gray */
-    --muted-foreground: 0 0% 70%; /* Lighter Muted Foreground */
+    --muted: 240 20% 15%; /* Dark Muted Indigo */
+    --muted-foreground: 220 15% 65%; /* Lighter Muted Foreground */
 
-    --accent: 0 0% 70%; /* Light Gray - for accents */
-    --accent-foreground: 0 0% 5%; /* Black - for text on accent */
+    --accent: 300 80% 65%; /* Vibrant Magenta/Pink */
+    --accent-foreground: 0 0% 100%; /* White for text on accent */
 
-    --destructive: 0 70% 55%; /* Strong Red - kept for error states */
+    --destructive: 0 70% 55%; /* Kept for error states */
     --destructive-foreground: 0 0% 95%; /* White */
 
-    --border: 0 0% 15%; /* Dark Gray Border */
-    --input: 0 0% 12%; /* Dark Input Background */
-    --ring: 0 0% 80%; /* Light Gray for rings */
+    --border: 250 20% 20%; /* Subtle Indigo Border */
+    --input: 250 25% 12%; /* Dark Indigo Input Background */
+    --ring: 190 90% 55%; /* Neon Cyan for rings */
 
-    --chart-1: 0 0% 80%;
-    --chart-2: 0 0% 65%;
-    --chart-3: 0 0% 50%;
-    --chart-4: 0 0% 35%; 
-    --chart-5: 0 0% 20%; 
+    --chart-1: 190 80% 70%;
+    --chart-2: 190 70% 60%;
+    --chart-3: 300 70% 70%;
+    --chart-4: 300 60% 60%; 
+    --chart-5: 230 30% 50%; 
 
     --radius: 0.5rem;
 
-    /* Sidebar specific colors - making them consistent with the new B&W theme */
-    --sidebar-background: 0 0% 3%; /* Even darker for sidebar */
-    --sidebar-foreground: 0 0% 90%;
-    --sidebar-primary: 0 0% 90%; /* Light Gray for primary items in sidebar */
-    --sidebar-primary-foreground: 0 0% 5%; /* Black for text */
-    --sidebar-accent: 0 0% 15%;
-    --sidebar-accent-foreground: 0 0% 95%;
-    --sidebar-border: 0 0% 12%;
-    --sidebar-ring: 0 0% 80%;
+    /* Sidebar specific colors - making them consistent with the futuristic theme */
+    --sidebar-background: 250 40% 4%; /* Even darker Indigo for sidebar */
+    --sidebar-foreground: 210 20% 85%;
+    --sidebar-primary: 190 90% 55%; /* Neon Cyan for primary items in sidebar */
+    --sidebar-primary-foreground: 250 30% 6%; /* Dark Indigo for text */
+    --sidebar-accent: 250 20% 15%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 250 20% 12%;
+    --sidebar-ring: 190 90% 55%;
   }
 }
 
@@ -65,9 +66,9 @@ body {
     background-image: linear-gradient(
       -45deg,
       hsl(var(--background)),
-      hsl(0 0% 20% / 0.25), /* Dark gray with transparency */
-      hsl(0 0% 50% / 0.2),  /* Mid gray with transparency */
-      hsl(var(--background) / 0.9) 
+      hsl(190 90% 55% / 0.15), /* Neon Cyan with transparency */
+      hsl(300 80% 65% / 0.1),  /* Vibrant Magenta with transparency */
+      hsl(var(--background) / 0.95) 
     );
     background-size: 400% 400%;
     @apply animate-animated-gradient-bg;

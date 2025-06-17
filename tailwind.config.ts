@@ -102,7 +102,7 @@ export default {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
         'message-in': 'message-in 0.4s cubic-bezier(0.25, 0.8, 0.25, 1) forwards',
-        'animated-gradient-bg': 'animated-gradient-bg 20s ease infinite',
+        'animated-gradient-bg': 'animated-gradient-bg 15s ease infinite', // Adjusted speed
       },
     },
   },
