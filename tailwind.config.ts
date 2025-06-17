@@ -1,4 +1,6 @@
+
 import type {Config} from 'tailwindcss';
+import { fontFamily } from 'tailwindcss/defaultTheme';
 
 export default {
   darkMode: ['class'],
@@ -10,8 +12,7 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        body: ['Consolas', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
-        headline: ['Consolas', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
+        sans: ["var(--font-sans)", ...fontFamily.sans],
         code: ['Consolas', 'Menlo', 'Monaco', 'Courier New', 'monospace'],
       },
       colors: {
