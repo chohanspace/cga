@@ -9,9 +9,6 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubContent,
-  DropdownMenuSubTrigger,
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
@@ -41,7 +38,7 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52"> {/* Reduced width from w-56 */}
+      <DropdownMenuContent align="start" className="w-52">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext}>
@@ -62,29 +59,22 @@ export default function ChatMenu({
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
-         <DropdownMenuSub>
-            <DropdownMenuSubTrigger>
-                <Brain className="mr-2 h-4 w-4" />
-                <span>AI Model</span>
-            </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent 
-                className="p-0" 
-                collisionPadding={10}
-                sideOffset={4} // Added for potentially better positioning
-                alignOffset={-4} // Added for potentially better positioning
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="flex items-center">
+            <Brain className="mr-2 h-4 w-4" />
+            <span>AI Model</span>
+          </DropdownMenuLabel>
+          {availableModels.map((model) => (
+            <DropdownMenuItem
+              key={model}
+              onClick={() => onModelChange(model)}
+              className="flex justify-between items-center w-full"
             >
-                 {availableModels.map((model) => (
-                    <DropdownMenuItem
-                        key={model}
-                        onClick={() => onModelChange(model)}
-                        className="flex justify-between items-center w-full"
-                    >
-                        {model}
-                        {currentModel === model && <Check size={16} className="ml-auto text-primary" />}
-                    </DropdownMenuItem>
-                ))}
-            </DropdownMenuSubContent>
-        </DropdownMenuSub>
+              <span>{model}</span>
+              {currentModel === model && <Check size={16} className="ml-auto text-primary" />}
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuGroup>
       </DropdownMenuContent>
     </DropdownMenu>
   );
