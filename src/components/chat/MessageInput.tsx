@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Send, Trash2, Loader2, Paperclip, X } from 'lucide-react';
 import Image from 'next/image';
+import PromptSuggestions from './PromptSuggestions'; // New import
 
 interface MessageInputProps {
   inputValue: string;
@@ -18,6 +19,8 @@ interface MessageInputProps {
   onFileAttach: (file: File) => void;
   attachedFile: { name: string; previewUrl: string } | null;
   onClearAttachment: () => void;
+  samplePrompts: string[]; // New prop
+  onPromptSuggestionClick: (promptText: string) => void; // New prop
 }
 
 export default function MessageInput({
@@ -30,6 +33,8 @@ export default function MessageInput({
   onFileAttach,
   attachedFile,
   onClearAttachment,
+  samplePrompts, // New prop
+  onPromptSuggestionClick, // New prop
 }: MessageInputProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +52,16 @@ export default function MessageInput({
     }
   };
 
+  const showPromptSuggestions = !isLoading && !inputValue.trim() && !attachedFile && samplePrompts && samplePrompts.length > 0;
+
   return (
     <div className="p-4 border-t border-border/50 bg-card/70 backdrop-blur-md shadow-lg">
+      {showPromptSuggestions && (
+        <PromptSuggestions
+          prompts={samplePrompts}
+          onPromptClick={onPromptSuggestionClick}
+        />
+      )}
       {attachedFile && (
         <div className="mb-2 p-2 border border-border/50 rounded-md flex items-center justify-between bg-background/50">
           <div className="flex items-center gap-2 overflow-hidden">
@@ -58,6 +71,7 @@ export default function MessageInput({
               width={40}
               height={40}
               className="rounded-sm object-cover"
+              data-ai-hint="attachment preview"
             />
             <span className="text-sm text-muted-foreground truncate">
               {attachedFile.name}
@@ -106,7 +120,7 @@ export default function MessageInput({
           type="file"
           ref={fileInputRef}
           onChange={handleFileSelected}
-          accept="image/*" 
+          accept="image/*"
           className="hidden"
           aria-hidden="true"
         />

@@ -27,6 +27,17 @@ const AVAILABLE_MODELS = ['ha-1.1', 'ha-1.2', 'ha-1.3', 'ha-1.4'];
 const DEFAULT_MODEL = 'ha-1.4';
 const GENERATE_IMAGE_COMMAND = '[GENERATE_IMAGE:';
 
+const samplePrompts: string[] = [
+  "Explain quantum computing in simple terms.",
+  "Generate an image of a serene cyberpunk city at night.",
+  "Write a short story about a friendly robot.",
+  "What are the latest advancements in AI?",
+  "Suggest three healthy breakfast ideas.",
+  "Create a futuristic UI concept for a music app.",
+  "Tell me a fun fact about space.",
+];
+
+
 export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
@@ -39,7 +50,7 @@ export default function ChatInterface() {
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
-        const displayName = currentUser.nickname || currentUser.username; 
+        const displayName = currentUser.nickname || currentUser.username;
         setConversationHistory([
         {
             id: 'welcome-message-initial',
@@ -52,6 +63,10 @@ export default function ChatInterface() {
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
+  };
+  
+  const handlePromptSuggestionClick = (promptText: string) => {
+    setInputValue(promptText);
   };
 
   const fileToDataUri = (file: File): Promise<string> => {
@@ -225,7 +240,7 @@ export default function ChatInterface() {
     <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/70 backdrop-blur-md sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {currentUser && ( 
+          {currentUser && (
             <ChatMenu
               currentModel={selectedModel}
               onModelChange={handleModelChange}
@@ -258,9 +273,11 @@ export default function ChatInterface() {
           onFileAttach={handleFileAttach}
           attachedFile={attachedFile ? { name: attachedFile.name, previewUrl: attachedFile.previewUrl } : null}
           onClearAttachment={handleClearAttachment}
+          samplePrompts={samplePrompts}
+          onPromptSuggestionClick={handlePromptSuggestionClick}
         />
       </main>
-      {currentUser && ( 
+      {currentUser && (
         <EditProfileDialog
           isOpen={isEditProfileOpen}
           onOpenChange={setIsEditProfileOpen}
