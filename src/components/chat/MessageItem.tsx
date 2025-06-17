@@ -169,7 +169,6 @@ export default function MessageItem({ message }: MessageItemProps) {
     if (longPressTimerRef.current) {
       clearTimeout(longPressTimerRef.current);
     }
-    // Only allow long-press copy for message content, not if interacting with image/code block internals
     if (message.content && !message.imageUrl && !message.attachment && !message.content.includes('```')) {
         longPressTimerRef.current = setTimeout(() => {
         navigator.clipboard.writeText(message.content)
@@ -218,7 +217,7 @@ export default function MessageItem({ message }: MessageItemProps) {
         </div>
       </DialogTrigger>
       {imageToView === src && (
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 bg-background">
           <DialogHeader>
             <DialogTitle className="truncate">{name || alt}</DialogTitle>
           </DialogHeader>
@@ -253,7 +252,7 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
     >
       {!isUser && (
-        <Avatar className="h-8 w-8 shrink-0 border border-accent/50 shadow-md">
+        <Avatar className="h-8 w-8 shrink-0 border border-accent/30 shadow-md">
           <AvatarFallback className="bg-accent text-accent-foreground">
             <Bot size={18} />
           </AvatarFallback>
@@ -261,10 +260,10 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
       <div
         className={cn(
-          'max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-1 select-none', // Reduced gap-2 to gap-1
+          'max-w-[75%] p-3 shadow-md text-sm flex flex-col gap-1 select-none', 
           isUser
-            ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/70'
-            : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70'
+            ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/50'
+            : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/50'
         )}
         onMouseDown={handleInteractionStart}
         onMouseUp={handleInteractionEnd}
@@ -274,15 +273,15 @@ export default function MessageItem({ message }: MessageItemProps) {
         onContextMenu={handleContextMenu}
       >
         {(message.content || (message.role === 'model' && displayedContent !== undefined)) && (
-          <div className="whitespace-pre-wrap break-words"> {/* Ensures words break to prevent overflow */}
+          <div className="whitespace-pre-wrap break-words"> 
             {renderFormattedMessage(displayedContent, handleCopyCode)}
             {isAiTyping && <span className="inline-block animate-pulse">|</span>}
           </div>
         )}
         
         {message.attachment && (
-          <div className="mt-2 border-t border-border/30 pt-2">
-            <p className="text-xs text-muted-foreground mb-1">Attached: {message.attachment.name}</p>
+          <div className="mt-2 border-t border-border/50 pt-2">
+            <p className="text-xs text-muted-foreground/80 mb-1">Attached: {message.attachment.name}</p>
              <ImageDisplay src={message.attachment.url} alt={message.attachment.name || 'Attached image'} name={message.attachment.name} isUserAttachment />
           </div>
         )}
@@ -299,7 +298,7 @@ export default function MessageItem({ message }: MessageItemProps) {
         )}
       </div>
       {isUser && (
-        <Avatar className="h-8 w-8 shrink-0 border border-primary/50 shadow-md">
+        <Avatar className="h-8 w-8 shrink-0 border border-primary/30 shadow-md">
           <AvatarFallback className="bg-primary text-primary-foreground">
             <User size={18} />
           </AvatarFallback>

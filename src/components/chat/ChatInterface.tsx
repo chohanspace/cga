@@ -39,7 +39,7 @@ export default function ChatInterface() {
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
-        const displayName = currentUser.nickname || currentUser.username; // Prioritize nickname
+        const displayName = currentUser.nickname || currentUser.username; 
         setConversationHistory([
         {
             id: 'welcome-message-initial',
@@ -222,10 +222,10 @@ export default function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
+    <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
-          {currentUser && ( // Only show menu if user is logged in
+          {currentUser && ( 
             <ChatMenu
               currentModel={selectedModel}
               onModelChange={handleModelChange}
@@ -237,7 +237,7 @@ export default function ChatInterface() {
           )}
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
             Harium AI
-            <span className="text-sm md:text-base font-normal text-muted-foreground ml-1">({selectedModel})</span>
+            <span className="text-xs md:text-sm font-normal text-muted-foreground/80 ml-1.5">({selectedModel})</span>
           </h1>
         </div>
         {currentUser && (
@@ -260,7 +260,7 @@ export default function ChatInterface() {
           onClearAttachment={handleClearAttachment}
         />
       </main>
-      {currentUser && ( // Ensure currentUser exists before trying to render EditProfileDialog
+      {currentUser && ( 
         <EditProfileDialog
           isOpen={isEditProfileOpen}
           onOpenChange={setIsEditProfileOpen}
