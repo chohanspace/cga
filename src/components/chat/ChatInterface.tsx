@@ -8,16 +8,16 @@ import { manageConversationContext, type ManageConversationContextInput, type Ma
 import { generateImageFromPrompt, type GenerateImageFromPromptInput, type GenerateImageFromPromptOutput } from '@/ai/flows/generate-image-from-prompt';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import ChatMenu from './ChatMenu'; // Changed from ModelSelector
-import EditProfileDialog from './EditProfileDialog'; // New
+import ChatMenu from './ChatMenu';
+import EditProfileDialog from './EditProfileDialog';
 
 export interface Message {
   id: string;
   role: 'user' | 'model';
   content: string;
-  imageUrl?: string; 
-  attachment?: { 
-    url: string; 
+  imageUrl?: string;
+  attachment?: {
+    url: string;
     name: string;
   };
   isGeneratingImage?: boolean;
@@ -35,15 +35,16 @@ export default function ChatInterface() {
   const [attachedFile, setAttachedFile] = useState<{ name: string; dataUri: string; previewUrl: string } | null>(null);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
-  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false); // New state for dialog
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
   useEffect(() => {
-    if (currentUser?.username && conversationHistory.length === 0) { 
+    if (currentUser && conversationHistory.length === 0) {
+        const displayName = currentUser.nickname || currentUser.username;
         setConversationHistory([
         {
             id: 'welcome-message-initial',
             role: 'model',
-            content: `Hello ${currentUser.username}! I am Harium AI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
+            content: `Hello ${displayName}! I am Harium AI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
         },
         ]);
     }
@@ -86,7 +87,7 @@ export default function ChatInterface() {
 
   const handleClearAttachment = () => {
     if (attachedFile) {
-      URL.revokeObjectURL(attachedFile.previewUrl); 
+      URL.revokeObjectURL(attachedFile.previewUrl);
     }
     setAttachedFile(null);
   };
@@ -106,15 +107,15 @@ export default function ChatInterface() {
 
     const historyForAI = conversationHistory
       .filter(msg => msg.id !== 'welcome-message-initial' && msg.id !== 'welcome-message-cleared')
-      .map(msg => ({ 
-        role: msg.role, 
+      .map(msg => ({
+        role: msg.role,
         content: msg.content,
       }));
 
     setConversationHistory(prev => [...prev, userMessage]);
     setInputValue('');
     const currentAttachmentDataUri = attachedFile?.dataUri;
-    handleClearAttachment(); 
+    handleClearAttachment();
     setIsLoadingAI(true);
 
     try {
@@ -123,9 +124,9 @@ export default function ChatInterface() {
         conversationHistory: historyForAI,
         attachmentDataUri: currentAttachmentDataUri,
       };
-      
+
       const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
-      
+
       if (result.response.startsWith(GENERATE_IMAGE_COMMAND)) {
         const imagePrompt = result.response.substring(GENERATE_IMAGE_COMMAND.length, result.response.length - 1).trim();
         const generatingMessageId = `model-generating-${Date.now()}`;
@@ -233,17 +234,13 @@ export default function ChatInterface() {
             onOpenEditProfile={() => setIsEditProfileOpen(true)}
           />
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
-            Harium AI 
+            Harium AI
             <span className="text-sm md:text-base font-normal text-muted-foreground ml-1">({selectedModel})</span>
           </h1>
         </div>
         {currentUser && (
           <div className="flex items-center gap-2">
-            <span className="text-sm text-muted-foreground hidden sm:inline">Logged in as: {currentUser.username}</span>
-            {/* Logout button is now in ChatMenu, can be removed from here if desired, or kept for redundancy */}
-            {/* <Button variant="ghost" size="icon" onClick={logout} aria-label="Logout">
-              <LogOut size={20} />
-            </Button> */}
+            <span className="text-sm text-muted-foreground hidden sm:inline">Logged in as: {currentUser.nickname || currentUser.username}</span>
           </div>
         )}
       </header>

@@ -8,8 +8,9 @@ import { useToast } from '@/hooks/use-toast';
 
 // Extended User interface
 interface User {
-  username: string;
-  password?: string; // Only for storage, not for currentUser state directly unless needed
+  username: string; // This will be fixed after signup
+  password?: string; // Only for storage, not for currentUser state directly
+  nickname?: string; // This will be changeable
   mobileNumber?: string;
   email?: string;
   pfpUrl?: string;
@@ -17,21 +18,23 @@ interface User {
 
 // For currentUser state and profile updates, password is not included
 export interface UserProfile {
-  username: string;
+  username: string; // Fixed identifier
+  nickname?: string; // Display name, changeable
   mobileNumber?: string;
   email?: string;
   pfpUrl?: string;
 }
-export type UserProfileUpdate = Partial<UserProfile>;
+// UserProfileUpdate will not include username
+export type UserProfileUpdate = Omit<Partial<UserProfile>, 'username'>;
 
 
 interface AuthContextType {
   currentUser: UserProfile | null;
   isLoading: boolean;
-  signup: (userData: User) => Promise<boolean>; // userData for signup includes password
-  login: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>; // Login needs password
+  signup: (userData: User) => Promise<boolean>;
+  login: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>;
   logout: () => void;
-  updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>; // New method
+  updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -98,18 +101,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    const newUser: User = { 
-        username: userData.username, 
+    const newUser: User = {
+        username: userData.username,
         password: userData.password,
-        // Initialize optional fields
+        nickname: userData.nickname || userData.username, // Initialize nickname
         mobileNumber: userData.mobileNumber || '',
         email: userData.email || '',
         pfpUrl: userData.pfpUrl || '',
     };
     saveUsers([...users, newUser]);
-    
-    const userProfile: UserProfile = { 
+
+    const userProfile: UserProfile = {
         username: newUser.username,
+        nickname: newUser.nickname,
         mobileNumber: newUser.mobileNumber,
         email: newUser.email,
         pfpUrl: newUser.pfpUrl,
@@ -122,7 +126,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     toast({
       title: 'Signup Successful',
-      description: `Welcome, ${newUser.username}!`,
+      description: `Welcome, ${userProfile.nickname || userProfile.username}!`,
     });
     router.push('/');
     return true;
@@ -140,9 +144,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return false;
     }
-    
-    const userProfile: UserProfile = { 
+
+    const userProfile: UserProfile = {
         username: user.username,
+        nickname: user.nickname || user.username, // Use nickname or fallback to username
         mobileNumber: user.mobileNumber,
         email: user.email,
         pfpUrl: user.pfpUrl,
@@ -155,7 +160,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     toast({
       title: 'Login Successful',
-      description: `Welcome back, ${user.username}!`,
+      description: `Welcome back, ${userProfile.nickname || userProfile.username}!`,
     });
     router.push('/');
     return true;
@@ -179,48 +184,32 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (!currentUser) return false;
 
     const users = getUsers();
-    const oldUsername = currentUser.username;
-    let userUpdated = false;
+    const userToUpdateIndex = users.findIndex(u => u.username === currentUser.username);
 
-    // If username is being changed, check for uniqueness
-    if (profileData.username && profileData.username !== oldUsername) {
-      const existingUserWithNewName = users.find(u => u.username === profileData.username);
-      if (existingUserWithNewName) {
-        toast({
-          variant: 'destructive',
-          title: 'Update Failed',
-          description: 'New username is already taken.',
-        });
-        return false;
-      }
-    }
-    
-    const updatedUsers = users.map(u => {
-      if (u.username === oldUsername) {
-        userUpdated = true;
-        return {
-          ...u, // Keep existing password and other fields
-          username: profileData.username || u.username,
-          mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : u.mobileNumber,
-          email: profileData.email !== undefined ? profileData.email : u.email,
-          pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : u.pfpUrl,
-        };
-      }
-      return u;
-    });
-
-    if (!userUpdated) {
+    if (userToUpdateIndex === -1) {
         toast({ variant: 'destructive', title: 'Error', description: 'Original user not found for update.' });
         return false;
     }
 
+    const updatedUser = {
+        ...users[userToUpdateIndex],
+        // Username and password are not changed here
+        nickname: profileData.nickname !== undefined ? profileData.nickname : users[userToUpdateIndex].nickname,
+        mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : users[userToUpdateIndex].mobileNumber,
+        email: profileData.email !== undefined ? profileData.email : users[userToUpdateIndex].email,
+        pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : users[userToUpdateIndex].pfpUrl,
+    };
+
+    const updatedUsers = [...users];
+    updatedUsers[userToUpdateIndex] = updatedUser;
     saveUsers(updatedUsers);
 
     const updatedCurrentUserProfile: UserProfile = {
-      username: profileData.username || currentUser.username,
-      mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : currentUser.mobileNumber,
-      email: profileData.email !== undefined ? profileData.email : currentUser.email,
-      pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : currentUser.pfpUrl,
+      username: currentUser.username, // Username remains the same
+      nickname: updatedUser.nickname,
+      mobileNumber: updatedUser.mobileNumber,
+      email: updatedUser.email,
+      pfpUrl: updatedUser.pfpUrl,
     };
 
     setCurrentUser(updatedCurrentUserProfile);
@@ -229,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (error) {
       console.error("Failed to save updated current user to localStorage", error);
     }
-    
+
     return true;
   }, [currentUser, getUsers, saveUsers, toast]);
 

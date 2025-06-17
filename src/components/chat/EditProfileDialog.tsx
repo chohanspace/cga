@@ -8,7 +8,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label'; // Re-added Label
 import {
   Dialog,
   DialogContent,
@@ -17,35 +16,36 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form'; // Re-added Form components
-import { useAuth, type UserProfileUpdate } from '@/context/AuthContext';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useAuth, type UserProfileUpdate, type UserProfile } from '@/context/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 
 const profileFormSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username must be at most 20 characters'),
+  nickname: z.string().min(3, 'Nickname must be at least 3 characters').max(20, 'Nickname must be at most 20 characters').optional().or(z.literal('')),
   pfpUrl: z.string().url('Please enter a valid URL for PFP').optional().or(z.literal('')),
-  mobileNumber: z.string().optional().or(z.literal('')), // Add more specific validation if needed
+  mobileNumber: z.string().optional().or(z.literal('')),
   email: z.string().email('Please enter a valid email address').optional().or(z.literal('')),
 });
 
+// FormData will not include username
 type ProfileFormData = z.infer<typeof profileFormSchema>;
 
 interface EditProfileDialogProps {
   isOpen: boolean;
   onOpenChange: (isOpen: boolean) => void;
-  user: UserProfileUpdate; // User from AuthContext
+  user: UserProfile; // UserProfile now includes nickname
 }
 
 export default function EditProfileDialog({ isOpen, onOpenChange, user }: EditProfileDialogProps) {
-  const { updateUserProfile } = useAuth();
+  const { updateUserProfile, currentUser } = useAuth(); // currentUser for username display
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ProfileFormData>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
-      username: user?.username || '',
+      nickname: user?.nickname || '',
       pfpUrl: user?.pfpUrl || '',
       mobileNumber: user?.mobileNumber || '',
       email: user?.email || '',
@@ -53,19 +53,27 @@ export default function EditProfileDialog({ isOpen, onOpenChange, user }: EditPr
   });
 
   useEffect(() => {
-    if (user) {
+    if (user && isOpen) { // Only reset if user or isOpen changes and dialog is open
       form.reset({
-        username: user.username || '',
+        nickname: user.nickname || user.username || '', // Fallback to username if nickname is empty
         pfpUrl: user.pfpUrl || '',
         mobileNumber: user.mobileNumber || '',
         email: user.email || '',
       });
     }
-  }, [user, form, isOpen]); // Reset form when user or isOpen changes
+  }, [user, form, isOpen]);
 
   const handleSubmit = async (data: ProfileFormData) => {
     setIsSubmitting(true);
-    const success = await updateUserProfile(data);
+    // Construct UserProfileUpdate, username is not part of it
+    const profileUpdateData: UserProfileUpdate = {
+        nickname: data.nickname,
+        pfpUrl: data.pfpUrl,
+        mobileNumber: data.mobileNumber,
+        email: data.email
+    };
+
+    const success = await updateUserProfile(profileUpdateData);
     if (success) {
       toast({
         title: 'Profile Updated',
@@ -76,7 +84,7 @@ export default function EditProfileDialog({ isOpen, onOpenChange, user }: EditPr
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: 'Could not update your profile. The username might be taken or an error occurred.',
+        description: 'Could not update your profile. An error occurred.',
       });
     }
     setIsSubmitting(false);
@@ -88,19 +96,20 @@ export default function EditProfileDialog({ isOpen, onOpenChange, user }: EditPr
         <DialogHeader>
           <DialogTitle>Edit Profile</DialogTitle>
           <DialogDescription>
-            Make changes to your profile here. Click save when you&apos;re done.
+            Username <span className="font-semibold text-primary">{currentUser?.username}</span> cannot be changed.
+            Make changes to your other profile details here. Click save when you&apos;re done.
           </DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4 py-4">
             <FormField
               control={form.control}
-              name="username"
+              name="nickname"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Nickname</FormLabel>
                   <FormControl>
-                    <Input placeholder="Your new nickname" {...field} disabled={isSubmitting} />
+                    <Input placeholder="Your display name" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

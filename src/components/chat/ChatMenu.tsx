@@ -41,7 +41,7 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-56">
+      <DropdownMenuContent align="start" className="w-52"> {/* Reduced width from w-56 */}
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext}>
@@ -67,10 +67,15 @@ export default function ChatMenu({
                 <Brain className="mr-2 h-4 w-4" />
                 <span>AI Model</span>
             </DropdownMenuSubTrigger>
-            <DropdownMenuSubContent className="p-0" collisionPadding={10}>
+            <DropdownMenuSubContent 
+                className="p-0" 
+                collisionPadding={10}
+                sideOffset={4} // Added for potentially better positioning
+                alignOffset={-4} // Added for potentially better positioning
+            >
                  {availableModels.map((model) => (
-                    <DropdownMenuItem 
-                        key={model} 
+                    <DropdownMenuItem
+                        key={model}
                         onClick={() => onModelChange(model)}
                         className="flex justify-between items-center w-full"
                     >
