@@ -14,7 +14,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
-import { Switch } from '@/components/ui/switch'; // Import Switch
+import { Switch } from '@/components/ui/switch';
+import { useRouter } from 'next/navigation'; // Added for programmatic navigation
 
 interface ChatMenuProps {
   currentModel: string;
@@ -37,6 +38,8 @@ export default function ChatMenu({
   isSpeechOutputEnabled,
   onToggleSpeechOutput,
 }: ChatMenuProps) {
+  const router = useRouter(); // Initialized router
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -44,18 +47,19 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64"> {/* Increased width for switch */}
+      <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
-          <DropdownMenuItem onClick={onClearContext}>
+          <DropdownMenuItem onClick={onClearContext} className="cursor-pointer">
             <MessageSquarePlus className="mr-2 h-4 w-4" />
             <span>New AI Chat</span>
           </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link href="/live-chat" className="w-full">
-              <Users className="mr-2 h-4 w-4" />
-              <span>Live Group Chat</span>
-            </Link>
+          <DropdownMenuItem 
+            onClick={() => router.push('/live-chat')} 
+            className="w-full cursor-pointer"
+          >
+            <Users className="mr-2 h-4 w-4" />
+            <span>Live Group Chat</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -63,7 +67,7 @@ export default function ChatMenu({
           <DropdownMenuLabel>Accessibility</DropdownMenuLabel>
             <div 
                 className="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none transition-colors focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
-                onClick={(e) => e.stopPropagation()} // Prevent menu from closing on switch click
+                onClick={(e) => e.stopPropagation()} 
             >
                 {isSpeechOutputEnabled ? <Volume2 className="mr-2 h-4 w-4" /> : <VolumeX className="mr-2 h-4 w-4" />}
                 <span className="flex-grow">Voice Responses</span>
@@ -78,11 +82,11 @@ export default function ChatMenu({
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Profile</DropdownMenuLabel>
-          <DropdownMenuItem onClick={onOpenEditProfile}>
+          <DropdownMenuItem onClick={onOpenEditProfile} className="cursor-pointer">
             <UserCog className="mr-2 h-4 w-4" />
             <span>Edit Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={onLogout}>
+          <DropdownMenuItem onClick={onLogout} className="cursor-pointer">
             <LogOut className="mr-2 h-4 w-4" />
             <span>Logout</span>
           </DropdownMenuItem>
@@ -97,7 +101,7 @@ export default function ChatMenu({
             <DropdownMenuItem
               key={model}
               onClick={() => onModelChange(model)}
-              className="flex justify-between items-center w-full"
+              className="flex justify-between items-center w-full cursor-pointer"
             >
               <span>{model}</span>
               {currentModel === model && <Check size={16} className="ml-auto text-primary" />}
