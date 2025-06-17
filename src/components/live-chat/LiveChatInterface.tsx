@@ -13,15 +13,13 @@ import { manageConversationContext, type ManageConversationContextInput, type Ma
 
 export interface LiveMessage {
   id: string;
-  sender: UserProfile; // Can be a regular user or Harium AI
+  sender: UserProfile; 
   content: string;
   timestamp: number;
-  isThinking?: boolean; // For AI "thinking" state
+  isThinking?: boolean; 
 }
 
-const MAX_MESSAGES = 100;
-const LIVE_CHAT_MESSAGES_KEY = 'harium_live_chat_messages';
-const THIRTY_MINUTES_MS = 30 * 60 * 1000;
+const MAX_MESSAGES_DISPLAY = 50; // Cap displayed messages for performance
 const HARIUM_AI_USERNAME = 'HariumAI_Assistant';
 const HARIUM_AI_NICKNAME = 'Harium AI';
 const HARIUM_AI_MENTION = '@hariumai';
@@ -29,83 +27,42 @@ const HARIUM_AI_MENTION = '@hariumai';
 const hariumAiProfile: UserProfile = {
   username: HARIUM_AI_USERNAME,
   nickname: HARIUM_AI_NICKNAME,
-  pfpUrl: '', // Could add a specific bot PFP URL later
+  pfpUrl: '', 
 };
 
 
 export default function LiveChatInterface() {
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<LiveMessage[]>([]);
+  // Initialize with a very simple static welcome message
+  const [messages, setMessages] = useState<LiveMessage[]>([
+    {
+      id: 'system-welcome-basic',
+      sender: { username: 'System', nickname: 'System' },
+      content: `Welcome to Live Chat! Type "${HARIUM_AI_MENTION} <your query>" to talk to Harium AI. Messages are in-memory and will be lost on refresh.`,
+      timestamp: Date.now(),
+    }
+  ]);
   const [isSending, setIsSending] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
 
-  useEffect(() => {
-    if (!currentUser) return;
-
-    let loadedMessages: LiveMessage[] = [];
-    const storedMessages = localStorage.getItem(LIVE_CHAT_MESSAGES_KEY);
-    const now = Date.now();
-
-    if (storedMessages) {
-      try {
-        const parsedMessages: LiveMessage[] = JSON.parse(storedMessages);
-        loadedMessages = parsedMessages.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
-      } catch (e) {
-        console.error("Failed to parse live chat messages from localStorage", e);
-        localStorage.removeItem(LIVE_CHAT_MESSAGES_KEY);
-      }
-    }
-
-    if (loadedMessages.length === 0) {
-      loadedMessages.push({
-        id: 'system-welcome',
-        sender: { username: 'System', nickname: 'System' },
-        content: `Welcome to the Live Chat, ${currentUser.nickname || currentUser.username}! Messages are stored locally for 30 mins. Type "${HARIUM_AI_MENTION} <your query>" to talk to Harium AI in this chat. This is a frontend simulation; messages are not shared with others in real-time.`,
-        timestamp: Date.now(),
-      });
-    }
-    
-    const finalInitialMessages = loadedMessages.slice(-MAX_MESSAGES);
-    setMessages(finalInitialMessages);
-
-    try {
-      localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalInitialMessages));
-    } catch (e) {
-        console.error("Failed to save initial messages to localStorage", e);
-    }
-
-  }, [currentUser]);
-
-  const saveMessagesToLocalStorage = useCallback((msgs: LiveMessage[]) => {
-    try {
-      const now = Date.now();
-      const recentMessages = msgs.filter(msg => (now - msg.timestamp) < THIRTY_MINUTES_MS);
-      const finalMessages = recentMessages.slice(-MAX_MESSAGES);
-      localStorage.setItem(LIVE_CHAT_MESSAGES_KEY, JSON.stringify(finalMessages));
-      return finalMessages;
-    } catch (storageError) {
-      console.error("Failed to save messages to localStorage", storageError);
-      toast({ variant: "destructive", title: "Storage Error", description: "Could not save message locally." });
-      return msgs; // Return original if save fails
-    }
-  }, [toast]);
-
+  // useEffect for currentUser dependent actions can be added back later if needed,
+  // for now, we keep initial message static.
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
 
+  // Simplified: Only manages in-memory state
   const addMessageToList = (newMessage: LiveMessage) => {
-    setMessages(prevMessages => saveMessagesToLocalStorage([...prevMessages, newMessage]));
+    setMessages(prevMessages => [...prevMessages, newMessage].slice(-MAX_MESSAGES_DISPLAY));
   };
 
+  // Simplified: Only manages in-memory state
   const updateMessageInList = (updatedMessage: LiveMessage) => {
     setMessages(prevMessages =>
-      saveMessagesToLocalStorage(
-        prevMessages.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg)
-      )
+      prevMessages.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg).slice(-MAX_MESSAGES_DISPLAY)
     );
   };
 
@@ -114,7 +71,7 @@ export default function LiveChatInterface() {
     e.preventDefault();
     const content = inputValue.trim();
 
-    if (!content || !currentUser || isSending) return;
+    if (!content || !currentUser) return; // isSending check removed temporarily, as AI is primary async op
 
     setIsSending(true);
 
@@ -127,8 +84,8 @@ export default function LiveChatInterface() {
     addMessageToList(userMessage);
     setInputValue('');
 
-    if (content.toLowerCase().startsWith(HARIUM_AI_MENTION.toLowerCase() + ' ')) {
-      const aiPrompt = content.substring(HARIUM_AI_MENTION.length + 1).trim();
+    if (content.toLowerCase().startsWith(HARIUM_AI_MENTION.toLowerCase())) {
+      const aiPrompt = content.substring(HARIUM_AI_MENTION.length).trim();
       if (aiPrompt) {
         const thinkingMessageId = `msg-ai-thinking-${Date.now()}`;
         const thinkingMessage: LiveMessage = {
@@ -173,8 +130,8 @@ export default function LiveChatInterface() {
           setIsSending(false);
         }
       } else {
-         // Case where "@hariumai " is typed but no prompt follows
-        setIsSending(false);
+        // Case where "@hariumai" is typed but no prompt follows
+        setIsSending(false); 
       }
     } else {
       // Not an AI command, just a regular user message
@@ -210,10 +167,9 @@ export default function LiveChatInterface() {
           inputValue={inputValue}
           onInputChange={handleInputChange}
           onSubmit={handleSubmit}
-          isLoading={isSending}
+          isLoading={isSending} // isLoading now primarily reflects AI thinking state
         />
       </main>
     </div>
   );
 }
-
