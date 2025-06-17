@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
-import { useRouter } from 'next/navigation'; // Added for programmatic navigation
+import { useRouter } from 'next/navigation';
 
 interface ChatMenuProps {
   currentModel: string;
@@ -38,7 +38,7 @@ export default function ChatMenu({
   isSpeechOutputEnabled,
   onToggleSpeechOutput,
 }: ChatMenuProps) {
-  const router = useRouter(); // Initialized router
+  const router = useRouter();
 
   return (
     <DropdownMenu>
@@ -47,7 +47,7 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64">
+      <DropdownMenuContent align="start" className="w-64 max-h-96 overflow-y-auto">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext} className="cursor-pointer">
