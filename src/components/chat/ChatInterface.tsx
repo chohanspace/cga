@@ -24,14 +24,15 @@ export interface Message {
   isGeneratingImage?: boolean; // To show "Generating image..."
 }
 
-const AVAILABLE_MODELS = ['ad-1.1', 'ad-1.2', 'ad-1.3'];
+const AVAILABLE_MODELS = ['ha-1.1', 'ha-1.2', 'ha-1.3', 'ha-1.4'];
+const DEFAULT_MODEL = 'ha-1.4';
 const GENERATE_IMAGE_COMMAND = '[GENERATE_IMAGE:';
 
 export default function ChatInterface() {
   const [inputValue, setInputValue] = useState('');
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [selectedModel, setSelectedModel] = useState<string>(AVAILABLE_MODELS[0]);
+  const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
   const [attachedFile, setAttachedFile] = useState<{ name: string; dataUri: string; previewUrl: string } | null>(null);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
@@ -108,14 +109,12 @@ export default function ChatInterface() {
       .map(msg => ({ 
         role: msg.role, 
         content: msg.content,
-        // Pass attachment info if AI needs it in context (though current prompt doesn't use this from history)
-        // attachmentDataUri: msg.role === 'user' && msg.attachment ? "Image was attached" : undefined 
       }));
 
     setConversationHistory(prev => [...prev, userMessage]);
     setInputValue('');
     const currentAttachmentDataUri = attachedFile?.dataUri;
-    handleClearAttachment(); // Clear attachment from input area after adding to message
+    handleClearAttachment(); 
     setIsLoadingAI(true);
 
     try {
@@ -146,7 +145,6 @@ export default function ChatInterface() {
             content: `Here's an image of "${imagePrompt}":`,
             imageUrl: imageResult.imageUrl,
           };
-          // Replace generating message with the actual image message
           setConversationHistory(prev => prev.map(msg => msg.id === generatingMessageId ? imageMessage : msg));
 
         } catch (imageError) {
