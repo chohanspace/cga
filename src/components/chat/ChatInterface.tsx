@@ -269,7 +269,7 @@ export default function ChatInterface() {
               onToggleSpeechOutput={toggleSpeechOutput}
             />
           )}
-          <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
+          <h1 className="text-xl md:text-2xl font-black text-primary">
             Harium AI
             <span className="text-xs md:text-sm font-normal text-muted-foreground/80 ml-1.5">({selectedModel})</span>
           </h1>
