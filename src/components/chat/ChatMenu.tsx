@@ -15,7 +15,6 @@ import { Button } from '@/components/ui/button';
 import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
-import { useRouter } from 'next/navigation';
 
 interface ChatMenuProps {
   currentModel: string;
@@ -38,7 +37,6 @@ export default function ChatMenu({
   isSpeechOutputEnabled,
   onToggleSpeechOutput,
 }: ChatMenuProps) {
-  const router = useRouter();
 
   return (
     <DropdownMenu>
@@ -55,11 +53,12 @@ export default function ChatMenu({
             <span>New AI Chat</span>
           </DropdownMenuItem>
           <DropdownMenuItem 
-            onClick={() => router.push('/live-chat')} 
-            className="w-full cursor-pointer"
+            disabled 
+            className="w-full cursor-not-allowed opacity-50"
+            aria-disabled="true"
           >
             <Users className="mr-2 h-4 w-4" />
-            <span>Live Group Chat</span>
+            <span>Live Group Chat (Coming Soon)</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
