@@ -12,7 +12,8 @@ import {
   DropdownMenuGroup,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain } from 'lucide-react';
+import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users } from 'lucide-react';
+import Link from 'next/link';
 
 interface ChatMenuProps {
   currentModel: string;
@@ -38,12 +39,18 @@ export default function ChatMenu({
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-52">
+      <DropdownMenuContent align="start" className="w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext}>
             <MessageSquarePlus className="mr-2 h-4 w-4" />
-            <span>Start New Chat</span>
+            <span>New AI Chat</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem asChild>
+            <Link href="/live-chat" className="w-full">
+              <Users className="mr-2 h-4 w-4" />
+              <span>Live Group Chat</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
