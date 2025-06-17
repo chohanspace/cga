@@ -1,15 +1,15 @@
 
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import LiveMessageList from './LiveMessageList';
-import LiveMessageInput from './LiveMessageInput';
+import { useState } from 'react';
+// import LiveMessageList from './LiveMessageList'; // Temporarily comment out
+// import LiveMessageInput from './LiveMessageInput'; // Temporarily comment out
 import { useAuth, type UserProfile } from '@/context/AuthContext';
-import { useToast } from '@/hooks/use-toast';
+// import { useToast } from '@/hooks/use-toast'; // Temporarily comment out
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Users } from 'lucide-react';
 import { useRouter } from 'next/navigation';
-import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context';
+// import { manageConversationContext, type ManageConversationContextInput, type ManageConversationContextOutput } from '@/ai/flows/manage-conversation-context'; // Temporarily comment out
 
 export interface LiveMessage {
   id: string;
@@ -19,61 +19,45 @@ export interface LiveMessage {
   isThinking?: boolean; 
 }
 
-const MAX_MESSAGES_DISPLAY = 50; // Cap displayed messages for performance
-const HARIUM_AI_USERNAME = 'HariumAI_Assistant';
-const HARIUM_AI_NICKNAME = 'Harium AI';
-const HARIUM_AI_MENTION = '@hariumai';
+// const MAX_MESSAGES_DISPLAY = 50; 
+// const HARIUM_AI_USERNAME = 'HariumAI_Assistant';
+// const HARIUM_AI_NICKNAME = 'Harium AI';
+// const HARIUM_AI_MENTION = '@hariumai';
 
-const hariumAiProfile: UserProfile = {
-  username: HARIUM_AI_USERNAME,
-  nickname: HARIUM_AI_NICKNAME,
-  pfpUrl: '', 
-};
+// const hariumAiProfile: UserProfile = {
+//   username: HARIUM_AI_USERNAME,
+//   nickname: HARIUM_AI_NICKNAME,
+//   pfpUrl: '', 
+// };
 
 
 export default function LiveChatInterface() {
   const [inputValue, setInputValue] = useState('');
-  // Initialize with a very simple static welcome message
   const [messages, setMessages] = useState<LiveMessage[]>([
     {
-      id: 'system-welcome-basic',
+      id: 'system-welcome-basic-simplified',
       sender: { username: 'System', nickname: 'System' },
-      content: `Welcome to Live Chat! Type "${HARIUM_AI_MENTION} <your query>" to talk to Harium AI. Messages are in-memory and will be lost on refresh.`,
+      content: `Welcome to Simplified Live Chat! This is a test version.`,
       timestamp: Date.now(),
     }
   ]);
-  const [isSending, setIsSending] = useState(false);
+  // const [isSending, setIsSending] = useState(false);
   const { currentUser } = useAuth();
-  const { toast } = useToast();
+  // const { toast } = useToast();
   const router = useRouter();
 
-  // useEffect for currentUser dependent actions can be added back later if needed,
-  // for now, we keep initial message static.
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setInputValue(e.target.value);
   };
 
-  // Simplified: Only manages in-memory state
-  const addMessageToList = (newMessage: LiveMessage) => {
-    setMessages(prevMessages => [...prevMessages, newMessage].slice(-MAX_MESSAGES_DISPLAY));
-  };
-
-  // Simplified: Only manages in-memory state
-  const updateMessageInList = (updatedMessage: LiveMessage) => {
-    setMessages(prevMessages =>
-      prevMessages.map(msg => msg.id === updatedMessage.id ? updatedMessage : msg).slice(-MAX_MESSAGES_DISPLAY)
-    );
-  };
-
-
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const content = inputValue.trim();
 
-    if (!content || !currentUser) return; // isSending check removed temporarily, as AI is primary async op
+    if (!content || !currentUser) return;
 
-    setIsSending(true);
+    // setIsSending(true); // Temporarily removed
 
     const userMessage: LiveMessage = {
       id: `msg-user-${Date.now()}`,
@@ -81,67 +65,25 @@ export default function LiveChatInterface() {
       content,
       timestamp: Date.now(),
     };
-    addMessageToList(userMessage);
+    
+    setMessages(prevMessages => [...prevMessages, userMessage]);
     setInputValue('');
-
-    if (content.toLowerCase().startsWith(HARIUM_AI_MENTION.toLowerCase())) {
-      const aiPrompt = content.substring(HARIUM_AI_MENTION.length).trim();
-      if (aiPrompt) {
-        const thinkingMessageId = `msg-ai-thinking-${Date.now()}`;
-        const thinkingMessage: LiveMessage = {
-          id: thinkingMessageId,
-          sender: hariumAiProfile,
-          content: `${HARIUM_AI_NICKNAME} is thinking...`,
-          timestamp: Date.now(),
-          isThinking: true,
-        };
-        addMessageToList(thinkingMessage);
-
-        try {
-          const aiInput: ManageConversationContextInput = {
-            userInput: aiPrompt,
-            conversationHistory: [], 
-          };
-          const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
-          
-          const aiResponseMessage: LiveMessage = {
-            id: thinkingMessageId, 
-            sender: hariumAiProfile,
-            content: result.response,
-            timestamp: Date.now(),
-          };
-          updateMessageInList(aiResponseMessage);
-
-        } catch (error) {
-          console.error('Error calling Harium AI in live chat:', error);
-          toast({
-            variant: 'destructive',
-            title: 'AI Error',
-            description: 'Harium AI could not respond in the chat.',
-          });
-          const aiErrorMessage: LiveMessage = {
-            id: thinkingMessageId, 
-            sender: hariumAiProfile,
-            content: "Sorry, I couldn't process that request.",
-            timestamp: Date.now(),
-          };
-          updateMessageInList(aiErrorMessage);
-        } finally {
-          setIsSending(false);
-        }
-      } else {
-        // Case where "@hariumai" is typed but no prompt follows
-        setIsSending(false); 
-      }
-    } else {
-      // Not an AI command, just a regular user message
-      setIsSending(false);
-    }
+    
+    // AI Mention logic temporarily removed
+    // setIsSending(false); // Temporarily removed
   };
   
   const handleGoBack = () => {
     router.push('/'); 
   };
+
+  if (!currentUser) { // Extra check for currentUser
+    return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-4">
+            <p>Loading user information or redirecting...</p>
+        </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen bg-transparent shadow-2xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
@@ -152,7 +94,7 @@ export default function LiveChatInterface() {
           </Button>
           <Users className="h-6 w-6 text-primary" />
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
-            Live Group Chat
+            Live Group Chat (Test)
           </h1>
         </div>
         {currentUser && (
@@ -161,14 +103,41 @@ export default function LiveChatInterface() {
           </div>
         )}
       </header>
-      <main className="flex-grow flex flex-col overflow-hidden">
-        <LiveMessageList messages={messages} currentUser={currentUser} />
-        <LiveMessageInput
-          inputValue={inputValue}
-          onInputChange={handleInputChange}
+      <main className="flex-grow flex flex-col overflow-hidden p-4 space-y-2">
+        {/* Inline Message List - Super Simplified */}
+        <div className="flex-grow overflow-y-auto border border-border/30 p-2 rounded-md">
+          {messages.map(msg => (
+            <div key={msg.id} className="mb-1 p-1 rounded text-sm">
+              <span className="font-semibold">{msg.sender.nickname || msg.sender.username}: </span>
+              <span>{msg.content}</span>
+            </div>
+          ))}
+        </div>
+        
+        {/* Inline Message Input - Super Simplified */}
+        <form
           onSubmit={handleSubmit}
-          isLoading={isSending} // isLoading now primarily reflects AI thinking state
-        />
+          className="flex items-center gap-3 p-2 border-t border-border/50 bg-card/50"
+        >
+          <input
+            type="text"
+            placeholder="Type a message..."
+            value={inputValue}
+            onChange={handleInputChange}
+            // disabled={isSending} // Temporarily removed
+            className="flex-grow p-2 border border-input rounded-md bg-background text-sm"
+            aria-label="Message input"
+            autoComplete="off"
+          />
+          <Button type="submit" /*disabled={isSending || !inputValue.trim()}*/ aria-label="Send message" size="sm">
+            Send
+            {/* {isSending ? (
+              <Loader2 size={16} className="animate-spin ml-2" />
+            ) : (
+              <Send size={16} className="ml-2" />
+            )} */}
+          </Button>
+        </form>
       </main>
     </div>
   );
