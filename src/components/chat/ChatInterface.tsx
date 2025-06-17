@@ -10,7 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
-import Image from 'next/image';
+// Removed Image import as it's no longer used here for the logo
 
 export interface Message {
   id: string;
@@ -271,15 +271,10 @@ export default function ChatInterface() {
             />
           )}
           <div className="flex items-center">
-            <Image 
-              src="/harium-logo.svg" 
-              alt="Harium AI Logo" 
-              width={36} 
-              height={36} 
-              className="h-9 w-9"
-              priority
-            />
-            <span className="text-xs md:text-sm font-normal text-muted-foreground/80 ml-2">({selectedModel})</span>
+            <h1 className="font-black text-primary text-2xl md:text-3xl mr-1">
+              Harium AI
+            </h1>
+            <span className="text-xs md:text-sm font-normal text-muted-foreground/80">({selectedModel})</span>
           </div>
         </div>
         {currentUser && (
