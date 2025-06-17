@@ -12,9 +12,10 @@ interface MessageListProps {
   isLoading: boolean;
   isSpeechOutputEnabled: boolean;
   isAiGenerationStopped: boolean; 
+  onAiDisplayFinalized: (messageId: string) => void;
 }
 
-export default function MessageList({ messages, isLoading, isSpeechOutputEnabled, isAiGenerationStopped }: MessageListProps) {
+export default function MessageList({ messages, isLoading, isSpeechOutputEnabled, isAiGenerationStopped, onAiDisplayFinalized }: MessageListProps) {
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -44,13 +45,12 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
       !lastMessage.imageUrl &&
       !lastMessage.isGeneratingImage &&
       !lastMessage.attachment &&
-      !isLoading // Observe only if not in general loading (AI is thinking for new msg)
+      !isLoading 
     ) {
       const lastMessageElement = scrollContainer.lastElementChild;
       if (lastMessageElement instanceof HTMLElement) { 
         observer = new MutationObserver(() => {
-          // Scroll 'auto' for fast updates during typing, but only if not stopped
-          if (!isAiGenerationStopped) { // Check prop here
+          if (!isAiGenerationStopped) { 
             scrollToBottom('auto'); 
           }
         });
@@ -62,7 +62,6 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
         });
       }
     } else if (isLoading || (lastMessage && lastMessage.role === 'user')) {
-      // If AI is thinking for a *new* message, or user just sent, scroll smoothly
       scrollToBottom('smooth');
     }
 
@@ -73,7 +72,7 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
         observer.disconnect();
       }
     };
-  }, [messages, isLoading, isAiGenerationStopped]); // Added isAiGenerationStopped to dependencies
+  }, [messages, isLoading, isAiGenerationStopped]);
 
   return (
     <ScrollArea className="flex-grow h-[calc(100vh-200px)]" ref={scrollAreaRef}>
@@ -83,15 +82,10 @@ export default function MessageList({ messages, isLoading, isSpeechOutputEnabled
             key={msg.id} 
             message={msg} 
             isSpeechOutputEnabled={isSpeechOutputEnabled} 
-            isGenerationStopped={isAiGenerationStopped} // Pass the prop here
+            isGenerationStopped={isAiGenerationStopped}
+            onDisplayFinalized={onAiDisplayFinalized}
           />
         ))}
-        {/* Show "Harium AI is thinking..." only when:
-            - isLoading is true (meaning a new response is being fetched)
-            - There are messages in the history
-            - The last message was from the user (AI is responding to this user message)
-            - AI generation has not been stopped by the user
-        */}
         {isLoading && messages.length > 0 && messages[messages.length-1].role === 'user' && !isAiGenerationStopped && (
           <div className="flex justify-start animate-message-in">
              <div className="flex items-center gap-2 p-3 rounded-lg bg-card/70 backdrop-blur-sm text-card-foreground border border-border/40 max-w-[70%]">

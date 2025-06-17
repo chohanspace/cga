@@ -14,7 +14,8 @@ import { useToast } from '@/hooks/use-toast';
 interface MessageItemProps {
   message: Message;
   isSpeechOutputEnabled: boolean;
-  isGenerationStopped: boolean; // Renamed for clarity, was isAiGenerationStopped
+  isGenerationStopped: boolean;
+  onDisplayFinalized?: (messageId: string) => void;
 }
 
 const TYPEWRITER_SPEED_MS = 15;
@@ -105,7 +106,7 @@ const renderFormattedMessage = (text: string, handleCopyCode: (code: string) => 
 };
 
 
-export default function MessageItem({ message, isSpeechOutputEnabled, isGenerationStopped }: MessageItemProps) {
+export default function MessageItem({ message, isSpeechOutputEnabled, isGenerationStopped, onDisplayFinalized }: MessageItemProps) {
   const isUser = message.role === 'user';
   const [imageToView, setImageToView] = useState<string | null>(null);
   const [imageNameToDownload, setImageNameToDownload] = useState<string | null>(null);
@@ -113,17 +114,20 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
   const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
   const typewriterIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const displayFinalizedCalledRef = useRef(false);
+
+  useEffect(() => {
+    displayFinalizedCalledRef.current = false; // Reset when message or its core content changes
+  }, [message.id, message.content, message.imageUrl, message.isGeneratingImage]);
 
 
   useEffect(() => {
-    // Always clear any existing interval when this effect re-runs.
     if (typewriterIntervalRef.current) {
       clearInterval(typewriterIntervalRef.current);
       typewriterIntervalRef.current = null;
     }
 
-    // Determine if this message should be typewritten (model's text, not image-related)
-    const shouldTypewrite =
+    const isModelTextResponse =
       message.role === 'model' &&
       typeof message.content === 'string' &&
       message.content.length > 0 &&
@@ -131,61 +135,69 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
       !message.imageUrl &&
       !message.attachment;
 
-    if (!shouldTypewrite) {
-      // If not typewriting (e.g. user message, AI image, AI attachment, or empty AI text):
-      // set content directly and exit.
+    if (!isModelTextResponse) {
       setDisplayedContent(message.content || '');
+      // If it's a model message but not for typing (e.g. image generating placeholder, or already has image URL)
+      // it's considered "finalized" for display purposes once rendered.
+      if (message.role === 'model' && !displayFinalizedCalledRef.current) {
+         onDisplayFinalized?.(message.id);
+         displayFinalizedCalledRef.current = true;
+      }
       return;
     }
 
-    // At this point, it's a message that normally would be typewritten.
-    // Now, check if AI generation was stopped for THIS message.
     if (isGenerationStopped) {
-      // If generation stopped, do not start a new typing interval.
-      // `displayedContent` will remain as it was when the interval was cleared at the start of this effect.
-      // This preserves the partially typed text.
+      // Preserve partially typed content
+      // setDisplayedContent(prev => prev); // No need, content is already set from previous runs or initial state
+      if (!displayFinalizedCalledRef.current) {
+        onDisplayFinalized?.(message.id);
+        displayFinalizedCalledRef.current = true;
+      }
       return;
     }
-
-    // If we reach here, we need to typewrite because it's eligible and not stopped.
+    
     let charIndex = 0;
-    // Reset to empty before starting a new typewriter animation for this message.
-    // This ensures if the message content changes for the same ID (unlikely but possible), it restarts.
     setDisplayedContent(''); 
 
     typewriterIntervalRef.current = setInterval(() => {
       if (charIndex < message.content.length) {
-        // Use functional update for setDisplayedContent to ensure `prev` is always fresh.
         setDisplayedContent(prev => prev + message.content.charAt(charIndex));
         charIndex++;
       } else {
-        // Typing finished for this message.
         if (typewriterIntervalRef.current) {
           clearInterval(typewriterIntervalRef.current);
           typewriterIntervalRef.current = null;
         }
+        if (!displayFinalizedCalledRef.current) {
+            onDisplayFinalized?.(message.id);
+            displayFinalizedCalledRef.current = true;
+        }
       }
     }, TYPEWRITER_SPEED_MS);
 
-    // Effect cleanup: clear interval when component unmounts or dependencies change.
     return () => {
       if (typewriterIntervalRef.current) {
         clearInterval(typewriterIntervalRef.current);
         typewriterIntervalRef.current = null;
       }
+      // If component unmounts mid-typing and it wasn't stopped, consider it finalized.
+      // This handles cases like clearing context during typing.
+      if (isModelTextResponse && !isGenerationStopped && !displayFinalizedCalledRef.current) {
+        onDisplayFinalized?.(message.id);
+        displayFinalizedCalledRef.current = true;
+      }
     };
-  }, [message.content, message.role, message.id, message.isGeneratingImage, message.imageUrl, message.attachment, isGenerationStopped]);
+  }, [message.content, message.role, message.id, message.isGeneratingImage, message.imageUrl, message.attachment, isGenerationStopped, onDisplayFinalized]);
 
 
   useEffect(() => {
-    // Speech synthesis logic
     if (
       isSpeechOutputEnabled &&
       message.role === 'model' &&
       !message.isGeneratingImage &&
       !message.imageUrl &&
-      displayedContent === message.content && // Only speak when typing is complete for this message
-      !isGenerationStopped && // Don't speak if generation was stopped
+      displayedContent === message.content && 
+      !isGenerationStopped && 
       message.content &&
       typeof window !== 'undefined' && window.speechSynthesis
     ) {
@@ -202,7 +214,6 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
   }, [isSpeechOutputEnabled, message.role, message.content, message.imageUrl, message.isGeneratingImage, displayedContent, message.id, isGenerationStopped]);
 
   useEffect(() => {
-    // General cleanup for speech synthesis on unmount
     return () => {
       if (typeof window !== 'undefined' && window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -301,13 +312,13 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
 
   const isAiCurrentlyTyping = 
     message.role === 'model' &&
-    !isGenerationStopped && // Not stopped
+    !isGenerationStopped && 
     !message.isGeneratingImage &&
     !message.imageUrl && 
     !message.attachment &&
     message.content && 
     typeof message.content === 'string' && 
-    displayedContent.length < message.content.length; // And still has content to type
+    displayedContent.length < message.content.length; 
 
   const hasTextContent = displayedContent && displayedContent.trim() !== '';
   const containsCodeBlock = message.content && message.content.includes('```');
@@ -335,7 +346,7 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
           'relative max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-1', 
           isUser
             ? 'bg-primary/70 backdrop-blur-sm text-primary-foreground rounded-lg rounded-br-sm border border-primary/40'
-            : 'bg-card/70 backdrop-blur-sm text-card-foreground rounded-lg rounded-bl-sm border border-border/40'
+            : 'bg-card/70 backdrop-blur-sm text-card-foreground rounded-lg rounded-lg rounded-bl-sm border border-border/40'
         )}
       >
         {showCopyButton && (
@@ -353,9 +364,7 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
           </Button>
         )}
 
-        {/* Render displayedContent which handles both typed and non-typed text */}
-        {/* The check `(message.content || displayedContent)` might be redundant if displayedContent is always derived from message.content */}
-        {(displayedContent || (message.role === 'model' && message.content)) && ( // Ensure there's something to render
+        {(displayedContent || (message.role === 'model' && message.content)) && (
           <div className="whitespace-pre-wrap break-words"> 
             {renderFormattedMessage(displayedContent, handleCopyCode)}
             {isAiCurrentlyTyping && <span className="inline-block animate-pulse">|</span>}
@@ -369,14 +378,14 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
           </div>
         )}
 
-        {message.isGeneratingImage && !message.imageUrl && ( // This is for the "Generating image..." placeholder
+        {message.isGeneratingImage && !message.imageUrl && ( 
            <div className="flex items-center gap-2 text-muted-foreground p-2 rounded-md bg-background/50 backdrop-blur-sm mt-2">
             <Loader2 size={16} className="animate-spin" />
             <span>Generating image...</span>
           </div>
         )}
         
-        {message.imageUrl && ( // This is for the actual generated image
+        {message.imageUrl && ( 
           <ImageDisplay src={message.imageUrl} alt="Generated AI image" name={`ai_image_${message.id}.png`} />
         )}
       </div>

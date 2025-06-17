@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
+import Image from 'next/image';
 
 export interface Message {
   id: string;
@@ -264,8 +265,8 @@ export default function ChatInterface() {
 
   const handleStopAiGeneration = useCallback(() => {
     setIsAiGenerationStopped(true);
-    isAiGenerationStoppedRef.current = true; // Ensure ref is also updated immediately
-    setIsLoadingAI(false);
+    isAiGenerationStoppedRef.current = true;
+    setIsLoadingAI(false); // Immediately set loading to false
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
     }
@@ -273,7 +274,18 @@ export default function ChatInterface() {
       title: 'AI Generation Stopped',
       description: 'The AI response has been halted.',
     });
-  }, [toast]); // Only toast is a dependency here
+  }, [toast]);
+
+  const handleAiDisplayFinalized = useCallback((finalizedMessageId: string) => {
+    setConversationHistory(prevHistory => {
+        if (prevHistory.length > 0 && 
+            prevHistory[prevHistory.length - 1].id === finalizedMessageId &&
+            !isAiGenerationStoppedRef.current) {
+            setIsLoadingAI(false);
+        }
+        return prevHistory;
+    });
+  }, []); // No direct dependency on isLoadingAI to avoid loops, relies on isAiGenerationStoppedRef
 
   const handleSubmit = async (currentInputText: string) => {
     const finalInput = currentInputText.trim();
@@ -310,22 +322,13 @@ export default function ChatInterface() {
         attachmentDataUri: currentAttachmentDataUri,
       };
       
-      const resultPromise = manageConversationContext(aiInput);
-
       // Short delay to allow stop signal to register if clicked immediately
       await new Promise(resolve => setTimeout(resolve, 50)); 
+      if (isAiGenerationStoppedRef.current) { return; } // Stop button already handled isLoadingAI
 
-      if (isAiGenerationStoppedRef.current) {
-        // No need to set isLoadingAI(false) here, handleStopAiGeneration does it.
-        return; 
-      }
-
-      const result: ManageConversationContextOutput = await resultPromise;
+      const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
       
-      if (isAiGenerationStoppedRef.current) {
-        // No need to set isLoadingAI(false) here, handleStopAiGeneration does it.
-        return; 
-      }
+      if (isAiGenerationStoppedRef.current) { return; } // Stop button already handled isLoadingAI
 
       if (result.response.startsWith(GENERATE_IMAGE_COMMAND)) {
         const imagePrompt = result.response.substring(GENERATE_IMAGE_COMMAND.length, result.response.length - 1).trim();
@@ -340,9 +343,7 @@ export default function ChatInterface() {
 
         try {
           if (isAiGenerationStoppedRef.current) { return; }
-          
           const imageResult: GenerateImageFromPromptOutput = await generateImageFromPrompt({ prompt: imagePrompt });
-          
           if (isAiGenerationStoppedRef.current) { return; }
 
           const imageMessage: Message = {
@@ -352,7 +353,6 @@ export default function ChatInterface() {
             imageUrl: imageResult.imageUrl,
           };
           setConversationHistory(prev => prev.map(msg => msg.id === generatingMessageId ? imageMessage : msg));
-
         } catch (imageError) {
           console.error('Error generating image:', imageError);
           if (isAiGenerationStoppedRef.current) { return; }
@@ -367,8 +367,15 @@ export default function ChatInterface() {
             title: 'Image Generation Failed',
             description: 'Could not generate the image. The model might be unavailable or the prompt too complex.',
           });
+        } finally {
+          // This 'finally' is specific to the image generation try-catch
+          if (!isAiGenerationStoppedRef.current) {
+            setIsLoadingAI(false); // Image generation is complete (success or fail)
+          }
         }
       } else {
+        // Text-only response. isLoadingAI remains true.
+        // MessageItem will call handleAiDisplayFinalized when typing is done or stopped.
         const aiMessage: Message = {
           id: `model-${Date.now()}`,
           role: 'model',
@@ -393,27 +400,23 @@ export default function ChatInterface() {
           content: "I encountered an error. Please try again.",
         };
         setConversationHistory(prev => [...prev, aiMessage]);
-      }
-    } finally {
-      // isLoadingAI is primarily controlled by handleStopAiGeneration or successful completion.
-      // Only set it false here if generation wasn't stopped.
-      if (!isAiGenerationStoppedRef.current) {
-        setIsLoadingAI(false);
+        setIsLoadingAI(false); // Set loading false on general error if not stopped
       }
     }
+    // No general 'finally' here for setIsLoadingAI(false) - it's handled by specific paths or callbacks
   };
 
   const handleClearContext = () => {
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
     }
-    // If AI is currently loading, stop it first
     if (isLoadingAI) {
-        handleStopAiGeneration();
+        handleStopAiGeneration(); // This will also set isLoadingAI to false
     }
+    // Ensure states are reset even if not loading
     setIsAiGenerationStopped(false); 
     isAiGenerationStoppedRef.current = false;
-    setIsLoadingAI(false); 
+    if (!isLoadingAI) setIsLoadingAI(false); // If it wasn't loading, ensure it's false
 
     setConversationHistory([
       {
@@ -502,7 +505,8 @@ export default function ChatInterface() {
             messages={conversationHistory} 
             isLoading={isLoadingAI} 
             isSpeechOutputEnabled={isSpeechOutputEnabled}
-            isAiGenerationStopped={isAiGenerationStopped} 
+            isAiGenerationStopped={isAiGenerationStopped}
+            onAiDisplayFinalized={handleAiDisplayFinalized}
         />
         <MessageInput
           inputValue={inputValue}
