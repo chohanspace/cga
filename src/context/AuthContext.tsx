@@ -6,17 +6,32 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 
+// Extended User interface
 interface User {
   username: string;
-  password?: string; // Password stored for demo, NOT secure for production
+  password?: string; // Only for storage, not for currentUser state directly unless needed
+  mobileNumber?: string;
+  email?: string;
+  pfpUrl?: string;
 }
 
+// For currentUser state and profile updates, password is not included
+export interface UserProfile {
+  username: string;
+  mobileNumber?: string;
+  email?: string;
+  pfpUrl?: string;
+}
+export type UserProfileUpdate = Partial<UserProfile>;
+
+
 interface AuthContextType {
-  currentUser: User | null;
+  currentUser: UserProfile | null;
   isLoading: boolean;
-  signup: (userData: User) => Promise<boolean>;
-  login: (userData: User) => Promise<boolean>;
+  signup: (userData: User) => Promise<boolean>; // userData for signup includes password
+  login: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>; // Login needs password
   logout: () => void;
+  updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>; // New method
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -25,7 +40,7 @@ const USERS_STORAGE_KEY = 'chat_app_users';
 const CURRENT_USER_STORAGE_KEY = 'chat_app_current_user';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const router = useRouter();
   const { toast } = useToast();
@@ -55,7 +70,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const saveUsers = useCallback((users: User[]) => {
     try {
       localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch (error) {
+    } catch (error)
+      {
       console.error("Failed to save users to localStorage", error);
     }
   }, []);
@@ -82,12 +98,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // In a real app, hash the password here before saving
-    const newUser = { username: userData.username, password: userData.password };
+    const newUser: User = { 
+        username: userData.username, 
+        password: userData.password,
+        // Initialize optional fields
+        mobileNumber: userData.mobileNumber || '',
+        email: userData.email || '',
+        pfpUrl: userData.pfpUrl || '',
+    };
     saveUsers([...users, newUser]);
-    setCurrentUser({ username: newUser.username }); // Don't store password in currentUser state
+    
+    const userProfile: UserProfile = { 
+        username: newUser.username,
+        mobileNumber: newUser.mobileNumber,
+        email: newUser.email,
+        pfpUrl: newUser.pfpUrl,
+    };
+    setCurrentUser(userProfile);
     try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify({ username: newUser.username }));
+      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
     } catch (error) {
       console.error("Failed to save current user to localStorage", error);
     }
@@ -99,7 +128,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return true;
   }, [getUsers, saveUsers, router, toast]);
 
-  const login = useCallback(async (userData: User): Promise<boolean> => {
+  const login = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
     const users = getUsers();
     const user = users.find(u => u.username === userData.username);
 
@@ -112,9 +141,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
     
-    setCurrentUser({ username: user.username });
+    const userProfile: UserProfile = { 
+        username: user.username,
+        mobileNumber: user.mobileNumber,
+        email: user.email,
+        pfpUrl: user.pfpUrl,
+    };
+    setCurrentUser(userProfile);
     try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify({ username: user.username }));
+      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
     } catch (error) {
       console.error("Failed to save current user to localStorage", error);
     }
@@ -140,8 +175,67 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
   }, [router, toast]);
 
+  const updateUserProfile = useCallback(async (profileData: UserProfileUpdate): Promise<boolean> => {
+    if (!currentUser) return false;
+
+    const users = getUsers();
+    const oldUsername = currentUser.username;
+    let userUpdated = false;
+
+    // If username is being changed, check for uniqueness
+    if (profileData.username && profileData.username !== oldUsername) {
+      const existingUserWithNewName = users.find(u => u.username === profileData.username);
+      if (existingUserWithNewName) {
+        toast({
+          variant: 'destructive',
+          title: 'Update Failed',
+          description: 'New username is already taken.',
+        });
+        return false;
+      }
+    }
+    
+    const updatedUsers = users.map(u => {
+      if (u.username === oldUsername) {
+        userUpdated = true;
+        return {
+          ...u, // Keep existing password and other fields
+          username: profileData.username || u.username,
+          mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : u.mobileNumber,
+          email: profileData.email !== undefined ? profileData.email : u.email,
+          pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : u.pfpUrl,
+        };
+      }
+      return u;
+    });
+
+    if (!userUpdated) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Original user not found for update.' });
+        return false;
+    }
+
+    saveUsers(updatedUsers);
+
+    const updatedCurrentUserProfile: UserProfile = {
+      username: profileData.username || currentUser.username,
+      mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : currentUser.mobileNumber,
+      email: profileData.email !== undefined ? profileData.email : currentUser.email,
+      pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : currentUser.pfpUrl,
+    };
+
+    setCurrentUser(updatedCurrentUserProfile);
+    try {
+      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(updatedCurrentUserProfile));
+    } catch (error) {
+      console.error("Failed to save updated current user to localStorage", error);
+    }
+    
+    return true;
+  }, [currentUser, getUsers, saveUsers, toast]);
+
+
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, signup, login, logout }}>
+    <AuthContext.Provider value={{ currentUser, isLoading, signup, login, logout, updateUserProfile }}>
       {children}
     </AuthContext.Provider>
   );

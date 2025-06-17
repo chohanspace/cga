@@ -8,20 +8,19 @@ import { manageConversationContext, type ManageConversationContextInput, type Ma
 import { generateImageFromPrompt, type GenerateImageFromPromptInput, type GenerateImageFromPromptOutput } from '@/ai/flows/generate-image-from-prompt';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
-import { Button } from '@/components/ui/button';
-import { LogOut, Image as ImageIcon } from 'lucide-react';
-import ModelSelector from './ModelSelector';
+import ChatMenu from './ChatMenu'; // Changed from ModelSelector
+import EditProfileDialog from './EditProfileDialog'; // New
 
 export interface Message {
   id: string;
   role: 'user' | 'model';
   content: string;
-  imageUrl?: string; // For AI-generated images
-  attachment?: { // For user-uploaded images
-    url: string; // data URI for display
+  imageUrl?: string; 
+  attachment?: { 
+    url: string; 
     name: string;
   };
-  isGeneratingImage?: boolean; // To show "Generating image..."
+  isGeneratingImage?: boolean;
 }
 
 const AVAILABLE_MODELS = ['ha-1.1', 'ha-1.2', 'ha-1.3', 'ha-1.4'];
@@ -36,9 +35,10 @@ export default function ChatInterface() {
   const [attachedFile, setAttachedFile] = useState<{ name: string; dataUri: string; previewUrl: string } | null>(null);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
+  const [isEditProfileOpen, setIsEditProfileOpen] = useState(false); // New state for dialog
 
   useEffect(() => {
-    if (currentUser?.username && conversationHistory.length === 0) { // Only set initial if history is empty
+    if (currentUser?.username && conversationHistory.length === 0) { 
         setConversationHistory([
         {
             id: 'welcome-message-initial',
@@ -86,7 +86,7 @@ export default function ChatInterface() {
 
   const handleClearAttachment = () => {
     if (attachedFile) {
-      URL.revokeObjectURL(attachedFile.previewUrl); // Clean up object URL
+      URL.revokeObjectURL(attachedFile.previewUrl); 
     }
     setAttachedFile(null);
   };
@@ -224,10 +224,13 @@ export default function ChatInterface() {
     <div className="flex flex-col h-screen bg-transparent shadow-xl rounded-lg overflow-hidden m-2 md:m-4 lg:mx-auto lg:max-w-4xl border border-border/30">
       <header className="p-4 border-b border-border/50 bg-card/80 backdrop-blur-sm sticky top-0 z-10 shadow-md flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <ModelSelector
+          <ChatMenu
             currentModel={selectedModel}
             onModelChange={handleModelChange}
             availableModels={AVAILABLE_MODELS}
+            onClearContext={handleClearContext}
+            onLogout={logout}
+            onOpenEditProfile={() => setIsEditProfileOpen(true)}
           />
           <h1 className="text-xl md:text-2xl font-headline font-semibold text-primary">
             Harium AI 
@@ -237,9 +240,10 @@ export default function ChatInterface() {
         {currentUser && (
           <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground hidden sm:inline">Logged in as: {currentUser.username}</span>
-            <Button variant="ghost" size="icon" onClick={logout} aria-label="Logout">
+            {/* Logout button is now in ChatMenu, can be removed from here if desired, or kept for redundancy */}
+            {/* <Button variant="ghost" size="icon" onClick={logout} aria-label="Logout">
               <LogOut size={20} />
-            </Button>
+            </Button> */}
           </div>
         )}
       </header>
@@ -257,6 +261,13 @@ export default function ChatInterface() {
           onClearAttachment={handleClearAttachment}
         />
       </main>
+      {currentUser && (
+        <EditProfileDialog
+          isOpen={isEditProfileOpen}
+          onOpenChange={setIsEditProfileOpen}
+          user={currentUser}
+        />
+      )}
     </div>
   );
 }
