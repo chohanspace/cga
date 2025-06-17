@@ -4,7 +4,7 @@
 import type { Message } from './ChatInterface';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, Bot, Loader2, Download, Eye, Copy } from 'lucide-react';
+import { User, Bot, Loader2, Download, Eye } from 'lucide-react';
 import React, { useState, useEffect, useRef } from 'react';
 import NextImage from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
@@ -15,7 +15,7 @@ interface MessageItemProps {
   message: Message;
 }
 
-const TYPEWRITER_SPEED_MS = 30; // Speed in milliseconds per character
+const TYPEWRITER_SPEED_MS = 30; 
 
 const renderFormattedMessage = (text: string) => {
   const parts = text.split(/(\*\*.*?\*\*)/g);
@@ -23,7 +23,6 @@ const renderFormattedMessage = (text: string) => {
     if (part.startsWith('**') && part.endsWith('**')) {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
     }
-    // To ensure the cursor has space to "blink" at the end of an empty or partially typed line
     if (text === '' && index === 0) return <React.Fragment key={index}>&nbsp;</React.Fragment>;
     return <React.Fragment key={index}>{part}</React.Fragment>;
   });
@@ -45,18 +44,20 @@ export default function MessageItem({ message }: MessageItemProps) {
       return;
     }
 
-    // Typewriter effect for AI model text messages
-    if (message.role === 'model' && message.content) {
+    if (message.role === 'model' && typeof message.content === 'string') {
       let charIndex = 0;
-      setDisplayedContent(''); // Reset for new message
+      setDisplayedContent(''); 
       const intervalId = setInterval(() => {
-        setDisplayedContent((prev) => prev + message.content[charIndex]);
-        charIndex++;
-        if (charIndex === message.content.length) {
+        if (charIndex < message.content.length) {
+          setDisplayedContent((prev) => prev + message.content[charIndex]);
+          charIndex++;
+        } else {
           clearInterval(intervalId);
         }
       }, TYPEWRITER_SPEED_MS);
       return () => clearInterval(intervalId);
+    } else if (message.role === 'model' && !message.content) {
+      setDisplayedContent(''); // Handle empty model messages
     }
   }, [message.content, message.role, message.id, isUser, message.isGeneratingImage, message.imageUrl, message.attachment]);
 
@@ -112,7 +113,7 @@ export default function MessageItem({ message }: MessageItemProps) {
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (isLongPressTriggeredRef.current) {
-      e.preventDefault(); // Prevent context menu if long press copy was triggered
+      e.preventDefault(); 
     }
   };
   
@@ -161,6 +162,7 @@ export default function MessageItem({ message }: MessageItemProps) {
                      !message.imageUrl && 
                      !message.attachment &&
                      message.content && 
+                     typeof message.content === 'string' && // Ensure content is a string
                      displayedContent.length < message.content.length;
 
   return (
@@ -179,14 +181,14 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
       <div
         className={cn(
-          'max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-2 select-none', // Added select-none
+          'max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-2 select-none',
           isUser
             ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/70'
             : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/70'
         )}
         onMouseDown={handleInteractionStart}
         onMouseUp={handleInteractionEnd}
-        onMouseLeave={handleInteractionEnd} // Clear timer if mouse leaves element
+        onMouseLeave={handleInteractionEnd} 
         onTouchStart={handleInteractionStart}
         onTouchEnd={handleInteractionEnd}
         onContextMenu={handleContextMenu}
