@@ -4,8 +4,8 @@
 import type { Message } from './ChatInterface';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { cn } from '@/lib/utils';
-import { User, Bot, Loader2, Download, Eye, Copy } from 'lucide-react';
-import React, { useState, useEffect, useRef } from 'react';
+import { User, Bot, Loader2, Download, Eye, Copy as CopyIcon } from 'lucide-react'; // Renamed Copy to CopyIcon to avoid naming conflict
+import React, { useState, useEffect } from 'react';
 import NextImage from 'next/image';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,7 @@ const TYPEWRITER_SPEED_MS = 30;
 const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code: string; onCopy: (code: string) => void }) => {
   const langClass = language ? `language-${language}` : '';
   return (
-    <div className="relative bg-muted p-3 pr-10 rounded-md my-2 font-code text-sm shadow-inner overflow-x-auto">
+    <div className="relative bg-muted/70 backdrop-blur-sm p-3 pr-10 rounded-md my-2 font-code text-sm shadow-inner overflow-x-auto border border-border/30">
       <Button
         variant="ghost"
         size="icon"
@@ -28,7 +28,7 @@ const CodeBlockComponent = ({ language, code, onCopy }: { language: string; code
         onClick={() => onCopy(code)}
         aria-label="Copy code"
       >
-        <Copy size={16} />
+        <CopyIcon size={16} />
       </Button>
       {language && <div className="absolute top-[0.3rem] left-2 text-xs text-muted-foreground opacity-70 select-none">{language}</div>}
       <pre className={cn("pt-4 whitespace-pre-wrap break-words", language && "pt-5")}><code className={langClass}>{code}</code></pre>
@@ -98,10 +98,8 @@ export default function MessageItem({ message }: MessageItemProps) {
   const [imageToView, setImageToView] = useState<string | null>(null);
   const [imageNameToDownload, setImageNameToDownload] = useState<string | null>(null);
   const [displayedContent, setDisplayedContent] = useState<string>('');
+  const [isHovered, setIsHovered] = useState(false);
   const { toast } = useToast();
-
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
-  const isLongPressTriggeredRef = useRef(false);
 
   useEffect(() => {
     if (isUser || message.isGeneratingImage || message.imageUrl || message.attachment ) {
@@ -164,36 +162,16 @@ export default function MessageItem({ message }: MessageItemProps) {
       });
   };
 
-  const handleInteractionStart = () => {
-    isLongPressTriggeredRef.current = false;
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
-    if (message.content && !message.imageUrl && !message.attachment && !message.content.includes('```')) {
-        longPressTimerRef.current = setTimeout(() => {
-        navigator.clipboard.writeText(message.content)
-            .then(() => {
-            toast({ title: "Copied to clipboard!", duration: 2000 });
-            })
-            .catch(err => {
-            console.error('Failed to copy text: ', err);
-            toast({ variant: 'destructive', title: "Copy failed", description: "Could not copy text to clipboard.", duration: 2000 });
-            });
-        isLongPressTriggeredRef.current = true;
-        }, 790);
-    }
-  };
-
-  const handleInteractionEnd = () => {
-    if (longPressTimerRef.current) {
-      clearTimeout(longPressTimerRef.current);
-    }
-  };
-
-  const handleContextMenu = (e: React.MouseEvent) => {
-    if (isLongPressTriggeredRef.current) {
-      e.preventDefault(); 
-    }
+  const handleCopyFullMessage = (text: string) => {
+    if (!text) return;
+    navigator.clipboard.writeText(text)
+      .then(() => {
+        toast({ title: "Message copied to clipboard!", duration: 2000 });
+      })
+      .catch(err => {
+        console.error('Failed to copy message: ', err);
+        toast({ variant: 'destructive', title: "Copy failed", description: "Could not copy message.", duration: 2000 });
+      });
   };
   
   const ImageDisplay = ({ src, alt, name, isUserAttachment }: { src: string; alt: string; name?: string; isUserAttachment?: boolean }) => (
@@ -217,7 +195,7 @@ export default function MessageItem({ message }: MessageItemProps) {
         </div>
       </DialogTrigger>
       {imageToView === src && (
-        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 bg-background">
+        <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-4 bg-background/80 backdrop-blur-md">
           <DialogHeader>
             <DialogTitle className="truncate">{name || alt}</DialogTitle>
           </DialogHeader>
@@ -244,12 +222,17 @@ export default function MessageItem({ message }: MessageItemProps) {
                      typeof message.content === 'string' && 
                      displayedContent.length < message.content.length;
 
+  const hasContentToCopy = message.content && message.content.trim() !== '' && !message.content.includes('```');
+
+
   return (
     <div
       className={cn(
         'flex items-start gap-3 p-1 animate-message-in',
         isUser ? 'justify-end' : 'justify-start'
       )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
       {!isUser && (
         <Avatar className="h-8 w-8 shrink-0 border border-accent/30 shadow-md">
@@ -260,18 +243,27 @@ export default function MessageItem({ message }: MessageItemProps) {
       )}
       <div
         className={cn(
-          'max-w-[75%] p-3 shadow-md text-sm flex flex-col gap-1 select-none', 
+          'relative max-w-[75%] p-3 shadow-lg text-sm flex flex-col gap-1', 
           isUser
-            ? 'bg-primary text-primary-foreground rounded-lg rounded-br-sm border border-primary/50'
-            : 'bg-card text-card-foreground rounded-lg rounded-bl-sm border border-border/50'
+            ? 'bg-primary/70 backdrop-blur-sm text-primary-foreground rounded-lg rounded-br-sm border border-primary/40'
+            : 'bg-card/70 backdrop-blur-sm text-card-foreground rounded-lg rounded-bl-sm border border-border/40'
         )}
-        onMouseDown={handleInteractionStart}
-        onMouseUp={handleInteractionEnd}
-        onMouseLeave={handleInteractionEnd} 
-        onTouchStart={handleInteractionStart}
-        onTouchEnd={handleInteractionEnd}
-        onContextMenu={handleContextMenu}
       >
+        {hasContentToCopy && isHovered && !message.attachment && !message.imageUrl && !message.isGeneratingImage && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "absolute h-6 w-6 text-muted-foreground hover:text-foreground z-10 transition-opacity",
+              isUser ? "top-1 left-1" : "top-1 right-1" 
+            )}
+            onClick={() => handleCopyFullMessage(message.content)}
+            aria-label="Copy message text"
+          >
+            <CopyIcon size={14} />
+          </Button>
+        )}
+
         {(message.content || (message.role === 'model' && displayedContent !== undefined)) && (
           <div className="whitespace-pre-wrap break-words"> 
             {renderFormattedMessage(displayedContent, handleCopyCode)}
@@ -287,7 +279,7 @@ export default function MessageItem({ message }: MessageItemProps) {
         )}
 
         {message.isGeneratingImage && !message.imageUrl && (
-           <div className="flex items-center gap-2 text-muted-foreground p-2 rounded-md bg-background/30 mt-2">
+           <div className="flex items-center gap-2 text-muted-foreground p-2 rounded-md bg-background/50 backdrop-blur-sm mt-2">
             <Loader2 size={16} className="animate-spin" />
             <span>Generating image...</span>
           </div>

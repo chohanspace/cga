@@ -48,7 +48,7 @@ export default function MessageInput({
   };
 
   return (
-    <div className="p-4 border-t border-border/50 bg-card shadow-lg">
+    <div className="p-4 border-t border-border/50 bg-card/70 backdrop-blur-md shadow-lg">
       {attachedFile && (
         <div className="mb-2 p-2 border border-border/50 rounded-md flex items-center justify-between bg-background/50">
           <div className="flex items-center gap-2 overflow-hidden">
