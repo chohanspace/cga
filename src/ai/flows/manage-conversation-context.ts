@@ -82,28 +82,43 @@ If the user asks a question about an image they attached, answer it directly bas
 
     parts.push({ text: "\n\nassistant:" });
 
-    const { output } = await ai.generate({
-      model: 'googleai/gemini-1.5-flash-latest',
-      prompt: parts,
-      output: { schema: ModelResponseSchema },
-      config: {
-        safetySettings: [
-          { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-          { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
-        ],
+    try {
+      const { output } = await ai.generate({
+        model: 'googleai/gemini-1.5-flash-latest',
+        prompt: parts,
+        output: { schema: ModelResponseSchema },
+        config: {
+          safetySettings: [
+            { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+            { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
+          ],
+        }
+      });
+
+      const aiResponseMessage = output!.response;
+
+      const updatedConversationHistory = [
+        ...conversationHistory,
+        { role: 'user' as const, content: userInput },
+        { role: 'model' as const, content: aiResponseMessage },
+      ];
+
+      return { response: aiResponseMessage, updatedConversationHistory };
+    } catch (error: any) {
+      if (error.message && (error.message.includes('503') || error.message.toLowerCase().includes('overloaded'))) {
+        const friendlyErrorMessage = "I'm currently experiencing high demand and couldn't process your request. Please try again in a moment. 😥";
+        
+        const updatedConversationHistoryWithError = [
+            ...conversationHistory,
+            { role: 'user' as const, content: userInput },
+            { role: 'model' as const, content: friendlyErrorMessage },
+        ];
+        return { response: friendlyErrorMessage, updatedConversationHistory: updatedConversationHistoryWithError };
       }
-    });
-
-    const aiResponseMessage = output!.response;
-
-    const updatedConversationHistory = [
-      ...conversationHistory,
-      { role: 'user' as const, content: userInput },
-      { role: 'model' as const, content: aiResponseMessage },
-    ];
-
-    return { response: aiResponseMessage, updatedConversationHistory };
+      // For other errors, re-throw them so the frontend catch block can handle it with a generic message.
+      throw error;
+    }
   }
 );

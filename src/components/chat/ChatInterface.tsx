@@ -353,7 +353,7 @@ export default function ChatInterface() {
             imageUrl: imageResult.imageUrl,
           };
           setConversationHistory(prev => prev.map(msg => msg.id === generatingMessageId ? imageMessage : msg));
-        } catch (imageError) {
+        } catch (imageError: any) {
           console.error('Error generating image:', imageError);
           if (isAiGenerationStoppedRef.current) { return; }
           const errorMsg: Message = {
@@ -365,7 +365,7 @@ export default function ChatInterface() {
           toast({
             variant: 'destructive',
             title: 'Image Generation Failed',
-            description: 'Could not generate the image. The model might be unavailable or the prompt too complex.',
+            description: imageError?.message || 'Could not generate the image. The model might be unavailable or the prompt too complex.',
           });
         } finally {
           // This 'finally' is specific to the image generation try-catch
