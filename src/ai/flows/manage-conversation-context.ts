@@ -69,17 +69,17 @@ If the user asks a question about an image they attached, answer it directly bas
     }));
 
     // Construct the prompt for the current turn, including any attachments
-    const promptForGenkit: Array<{ text: string } | { media: { url: string } }> = [{ text: userInput }];
+    const currentTurnPrompt: Array<{ text: string } | { media: { url: string } }> = [{ text: userInput }];
     if (attachmentDataUri) {
-      promptForGenkit.push({ media: { url: attachmentDataUri } });
+      currentTurnPrompt.push({ media: { url: attachmentDataUri } });
     }
 
     try {
       const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
-        system: systemPrompt,
+        // We are prepending the system prompt to the user's input, as the 'system' parameter is not supported.
+        prompt: [{text: systemPrompt}, ...currentTurnPrompt],
         history: historyForGenkit,
-        prompt: promptForGenkit,
         output: { schema: ModelResponseSchema },
         config: {
           safetySettings: [
