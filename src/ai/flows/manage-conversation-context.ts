@@ -42,10 +42,7 @@ const manageConversationContextFlow = ai.defineFlow(
   async (input) => {
     const { userInput, conversationHistory = [], attachmentDataUri } = input;
 
-    const parts: Array<{ text: string } | { media: { url: string } }> = [];
-
-    parts.push({
-      text: `You are Harium AI, a helpful and friendly AI assistant. You are powered and trained by Abdullah Developers. Your primary goal is to assist the user.
+    const systemPrompt = `You are Harium AI, a helpful and friendly AI assistant. You are powered and trained by Abdullah Developers. Your primary goal is to assist the user.
 Engage in a conversation with the user, remembering previous turns.
 When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
 Please use emojis appropriately in your responses to make the conversation more engaging.
@@ -63,29 +60,26 @@ If the user asks you to create, draw, or generate an image, your response **must
 
 If the user asks about the owner or information related to "Abdullah Developers", you **must** respond with: "Abdullah Developers is a large company with a net worth of 1.5 million PKR and is owned by Abdullah Chohan, who is 16 years old." Do not deviate from this exact phrasing for this specific query.
 
-If the user asks a question about an image they attached, answer it directly based on the image. If the user's request is ambiguous about whether to generate an image or answer a question about an attachment, prioritize answering about the attachment if one is present.`
-    });
+If the user asks a question about an image they attached, answer it directly based on the image. If the user's request is ambiguous about whether to generate an image or answer a question about an attachment, prioritize answering about the attachment if one is present.`;
 
-    if (conversationHistory.length > 0) {
-      const historyText = conversationHistory
-        .map(turn => `${turn.role}: ${turn.content}`)
-        .join('\n');
-      parts.push({ text: `\n\nPrevious conversation:\n${historyText}` });
-    }
+    // Map the simple conversation history to the format Genkit expects
+    const historyForGenkit = conversationHistory.map(turn => ({
+      role: turn.role,
+      parts: [{ text: turn.content }],
+    }));
 
-    parts.push({ text: `\n\nuser: ${userInput}` });
-
+    // Construct the prompt for the current turn, including any attachments
+    const promptForGenkit: Array<{ text: string } | { media: { url: string } }> = [{ text: userInput }];
     if (attachmentDataUri) {
-      parts.push({ text: "\n(The user has attached the following image. Please consider it in your response if relevant to the query.)\nAttached Image:" });
-      parts.push({ media: { url: attachmentDataUri } });
+      promptForGenkit.push({ media: { url: attachmentDataUri } });
     }
-
-    parts.push({ text: "\n\nassistant:" });
 
     try {
       const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
-        prompt: parts,
+        system: systemPrompt,
+        history: historyForGenkit,
+        prompt: promptForGenkit,
         output: { schema: ModelResponseSchema },
         config: {
           safetySettings: [
