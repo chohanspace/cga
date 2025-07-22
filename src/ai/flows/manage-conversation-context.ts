@@ -1,3 +1,4 @@
+
 'use server';
 
 /**
@@ -62,8 +63,7 @@ If the user asks about the owner or information related to "Abdullah Developers"
 
 If the user asks a question about an image they attached, answer it directly based on the image. If the user's request is ambiguous about whether to generate an image or answer a question about an attachment, prioritize answering about the attachment if one is present.`;
 
-    // Map the simple conversation history to the format Genkit expects
-    const historyForGenkit = conversationHistory.map(turn => ({
+    const modelHistory = conversationHistory.map(turn => ({
       role: turn.role,
       parts: [{ text: turn.content }],
     }));
@@ -77,9 +77,8 @@ If the user asks a question about an image they attached, answer it directly bas
     try {
       const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
-        // We are prepending the system prompt to the user's input, as the 'system' parameter is not supported.
-        prompt: [{text: systemPrompt}, ...currentTurnPrompt],
-        history: historyForGenkit,
+        prompt: currentTurnPrompt,
+        history: [{role: 'user', parts: [{text: systemPrompt}]}, ...modelHistory],
         output: { schema: ModelResponseSchema },
         config: {
           safetySettings: [
