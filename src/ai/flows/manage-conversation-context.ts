@@ -75,9 +75,9 @@ If the user asks a question about an image they attached, answer it directly bas
     }
 
     try {
-      // Prepend the system prompt as the first "user" message in the history.
-      // This is the correct way to provide system-level instructions to Gemini models.
-      const historyWithSystemPrompt = [{role: 'user', parts: [{text: systemPrompt}]}, {role: 'model', parts: [{text: "Understood. I will act as Harium AI."}]}, ...modelHistory];
+      // Prepend the system prompt as the first "user" message in the history, followed by a standard model response.
+      // This is a robust way to provide system-level instructions to Gemini models.
+      const historyWithSystemPrompt = [{role: 'user', parts: [{text: systemPrompt}]}, {role: 'model', parts: [{text: "Understood. I will act as Harium AI and follow all instructions."}]}, ...modelHistory];
 
       const { output } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
