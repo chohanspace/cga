@@ -29,10 +29,6 @@ export async function manageConversationContext(input: ManageConversationContext
   return manageConversationContextFlow(input);
 }
 
-const ModelResponseSchema = z.object({
-  response: z.string().describe('The AI response to the user input.'),
-});
-
 const manageConversationContextFlow = ai.defineFlow(
   {
     name: 'manageConversationContextFlow',
@@ -68,22 +64,18 @@ If the user asks a question about an image they attached, answer it directly bas
       parts: [{ text: turn.content }],
     }));
 
-    // Construct the prompt for the current turn, including any attachments
     const currentTurnPrompt: Array<{ text: string } | { media: { url: string } }> = [{ text: userInput }];
     if (attachmentDataUri) {
       currentTurnPrompt.push({ media: { url: attachmentDataUri } });
     }
 
     try {
-      // Prepend the system prompt as the first "user" message in the history, followed by a standard model response.
-      // This is a robust way to provide system-level instructions to Gemini models.
-      const historyWithSystemPrompt = [{role: 'user', parts: [{text: systemPrompt}]}, {role: 'model', parts: [{text: "Understood. I will act as Harium AI and follow all instructions."}]}, ...modelHistory];
+      const historyWithSystemPrompt = [{role: 'user' as const, parts: [{text: systemPrompt}]}, {role: 'model' as const, parts: [{text: "Understood. I will act as Harium AI and follow all instructions."}]}, ...modelHistory];
 
-      const { output } = await ai.generate({
+      const { text } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',
         prompt: currentTurnPrompt,
         history: historyWithSystemPrompt,
-        output: { schema: ModelResponseSchema },
         config: {
           safetySettings: [
             { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_MEDIUM_AND_ABOVE' },
@@ -94,7 +86,7 @@ If the user asks a question about an image they attached, answer it directly bas
         }
       });
 
-      const aiResponseMessage = output!.response;
+      const aiResponseMessage = text || "I'm sorry, I couldn't generate a response.";
 
       const updatedConversationHistory = [
         ...conversationHistory,
@@ -114,7 +106,6 @@ If the user asks a question about an image they attached, answer it directly bas
         ];
         return { response: friendlyErrorMessage, updatedConversationHistory: updatedConversationHistoryWithError };
       }
-      // For other errors, re-throw them so the frontend catch block can handle it with a generic message.
       throw error;
     }
   }
