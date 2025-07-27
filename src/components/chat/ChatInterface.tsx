@@ -203,10 +203,28 @@ export default function ChatInterface() {
   const [isSpeechOutputEnabled, setIsSpeechOutputEnabled] = useState(false);
   const [isAiGenerationStopped, setIsAiGenerationStopped] = useState(false);
   const isAiGenerationStoppedRef = useRef(isAiGenerationStopped);
+  const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
 
   useEffect(() => {
     isAiGenerationStoppedRef.current = isAiGenerationStopped;
   }, [isAiGenerationStopped]);
+
+  useEffect(() => {
+    // Shuffle prompts on component mount
+    const shuffleArray = (array: string[]) => {
+      let currentIndex = array.length, randomIndex;
+      const newArray = [...array]; 
+
+      while (currentIndex !== 0) {
+        randomIndex = Math.floor(Math.random() * currentIndex);
+        currentIndex--;
+        [newArray[currentIndex], newArray[randomIndex]] = [
+          newArray[randomIndex], newArray[currentIndex]];
+      }
+      return newArray;
+    }
+    setSuggestedPrompts(shuffleArray(samplePrompts).slice(0, 5));
+  }, []);
 
   useEffect(() => {
     if (currentUser && conversationHistory.length === 0) {
@@ -518,7 +536,7 @@ export default function ChatInterface() {
           onFileAttach={handleFileAttach}
           attachedFile={attachedFile ? { name: attachedFile.name, previewUrl: attachedFile.previewUrl } : null}
           onClearAttachment={handleClearAttachment}
-          samplePrompts={samplePrompts}
+          samplePrompts={suggestedPrompts}
           onPromptSuggestionClick={handlePromptSuggestionClick}
           onStopAiGeneration={handleStopAiGeneration}
         />
