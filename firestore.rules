@@ -1,0 +1,37 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Note: This project uses a custom authentication system, not Firebase Auth.
+    // Therefore, we cannot use `request.auth.uid` for secure user identification.
+    // These rules are simplified for functionality and rely on the client sending the correct username.
+    // For a production environment, migrating to Firebase Authentication is strongly recommended for robust security.
+
+    // Allow users to read and write only their own chat documents.
+    // The document ID is expected to be in the format 'chat_<username>'.
+    match /chats/chat_{username} {
+      allow read, write: if request.auth == null; // Insecure: Allows any client, as there's no Firebase Auth.
+                                                  // This is a temporary measure to make the app work.
+    }
+
+    // Rules for the 'users' collection
+    match /users/{userId} {
+      // Allow anyone to create a new user account (signup).
+      allow create: if true;
+      
+      // Allow anyone to read user profiles (needed for login and profile display).
+      // This is generally safe as passwords are not read by the client.
+      allow read: if true;
+
+      // Only allow a user to update their own document.
+      // This is still insecure as we can't verify the user's identity without Firebase Auth.
+      // A malicious user could guess another user's ID and overwrite their data.
+      allow update: if true; // Insecure: For development purposes only.
+    }
+
+    // Default deny all other reads/writes
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
