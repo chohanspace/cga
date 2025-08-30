@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
 import { db } from '@/lib/firebase';
-import { ref, set, onValue, off } from "firebase/database";
+import { ref, set, onValue, off, update } from "firebase/database";
 
 export interface Message {
   id: string;
@@ -580,3 +580,5 @@ export default function ChatInterface() {
     </div>
   );
 }
+
+    
