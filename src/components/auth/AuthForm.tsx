@@ -55,7 +55,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
   const { signup, login, verifyOtpAndLogin, resendOtp } = useAuth();
   const [authStep, setAuthStep] = useState<'credentials' | 'otp'>('credentials');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [authStatus, setAuthStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
+  const [authStatus, setAuthStatus] = useState<'idle' | 'pending' | 'success' | 'error' | 'needs_verification'>('idle');
   const [emailForOtp, setEmailForOtp] = useState('');
   
   const [displayedText, setDisplayedText] = useState('');
@@ -132,23 +132,31 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setIsSubmitting(true);
     setAuthStatus('pending');
     
-    let success: boolean;
     if (mode === 'signup') {
-        success = await signup(data as SignupFormData);
+        const result = await signup(data as SignupFormData);
+        if (result.success) {
+            setAuthStatus('success');
+            setEmailForOtp(data.email);
+            setAuthStep('otp');
+            if (result.needsVerification) {
+                form.setError('email', { type: 'manual', message: 'This email is pending verification. Check your inbox for an OTP.' });
+            }
+        } else {
+            setAuthStatus('error');
+             setTimeout(() => setAuthStatus('idle'), 2000);
+        }
     } else {
-        success = await login(data as LoginFormData);
+        const success = await login(data as LoginFormData);
+        if (success) {
+            setAuthStatus('success');
+            setEmailForOtp(data.email);
+            setAuthStep('otp');
+        } else {
+            setAuthStatus('error');
+            setTimeout(() => setAuthStatus('idle'), 2000);
+        }
     }
-
-    if (success) {
-        setAuthStatus('success');
-        setEmailForOtp(data.email);
-        setAuthStep('otp');
-    } else {
-        setAuthStatus('error');
-        setTimeout(() => {
-            setAuthStatus('idle');
-        }, 2000);
-    }
+    
     setIsSubmitting(false);
   };
   

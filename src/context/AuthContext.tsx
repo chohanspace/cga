@@ -36,7 +36,7 @@ export type UserProfileUpdate = Omit<Partial<UserProfile>, 'username' | 'email'>
 interface AuthContextType {
   currentUser: UserProfile | null;
   isLoading: boolean;
-  signup: (userData: Pick<User, 'email' | 'password'>) => Promise<boolean>;
+  signup: (userData: Pick<User, 'email' | 'password'>) => Promise<{success: boolean, needsVerification?: boolean}>;
   login: (userData: Pick<User, 'email' | 'password'>) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>;
@@ -94,7 +94,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const signup = useCallback(async (userData: Pick<User, 'email' | 'password'>): Promise<boolean> => {
+  const signup = useCallback(async (userData: Pick<User, 'email' | 'password'>): Promise<{success: boolean, needsVerification?: boolean}> => {
     const { email, password } = userData;
     if (!password || password.length < 6 || password.length > 18) {
       toast({
@@ -102,11 +102,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         title: 'Signup Failed',
         description: 'Password must be between 6 and 18 characters.',
       });
-      return false;
+      return { success: false };
     }
     if (!email || !email.includes('@')) {
         toast({ variant: 'destructive', title: 'Signup Failed', description: 'Please provide a valid email.'});
-        return false;
+        return { success: false };
     }
 
     const username = email.split('@')[0];
@@ -114,8 +114,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const userSnapshot = await get(userRef);
 
     if (userSnapshot.exists()) {
-      toast({ variant: 'destructive', title: 'Signup Failed', description: 'An account with this email already exists.' });
-      return false;
+      const existingUser: User = userSnapshot.val();
+      // If user exists and has a non-expired OTP, they are considered verified. Block signup.
+      // If they have no OTP or it is expired, they are unverified. Let them re-verify.
+      if (existingUser.otp && existingUser.otpExpires && existingUser.otpExpires > Date.now()) {
+          toast({ variant: 'destructive', title: 'Signup Failed', description: 'An account with this email already exists.' });
+          return { success: false };
+      } else {
+          // User exists but is not verified or OTP expired. Resend OTP for verification.
+          const otpSent = await sendOtpRequest(email);
+          return { success: otpSent, needsVerification: true };
+      }
     }
 
     const newUserForStorage: User = {
@@ -130,11 +139,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
         await set(userRef, newUserForStorage);
         // Do not log in yet, just send OTP
-        return await sendOtpRequest(email);
+        const otpSent = await sendOtpRequest(email);
+        return { success: otpSent };
     } catch (error) {
         console.error("Error creating user in Realtime DB: ", error);
         toast({ variant: 'destructive', title: 'Signup Failed', description: 'Could not create your account.' });
-        return false;
+        return { success: false };
     }
   }, [toast]);
 
@@ -208,7 +218,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const resendOtp = useCallback(async (email: string) => {
     if (!email) return;
     await sendOtpRequest(email);
-  }, [toast]);
+  }, []);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
