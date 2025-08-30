@@ -2,6 +2,7 @@
 'use client';
 
 import type React from 'react';
+import { useState, useEffect } from 'react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,11 +11,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
   DropdownMenuGroup,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
+  DropdownMenuPortal,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX } from 'lucide-react';
+import { Menu, Check, MessageSquarePlus, UserCog, LogOut, Brain, Users, Volume2, VolumeX, History, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import { Switch } from '@/components/ui/switch';
+import { useAuth } from '@/context/AuthContext';
+import { ScrollArea } from '@/components/ui/scroll-area';
+
 
 interface ChatMenuProps {
   currentModel: string;
@@ -25,6 +33,7 @@ interface ChatMenuProps {
   onOpenEditProfile: () => void;
   isSpeechOutputEnabled: boolean;
   onToggleSpeechOutput: () => void;
+  onSelectChat: (chatId: string) => void;
 }
 
 export default function ChatMenu({
@@ -36,16 +45,31 @@ export default function ChatMenu({
   onOpenEditProfile,
   isSpeechOutputEnabled,
   onToggleSpeechOutput,
+  onSelectChat
 }: ChatMenuProps) {
 
+  const { listUserChats } = useAuth();
+  const [savedChats, setSavedChats] = useState<string[]>([]);
+  const [isLoadingChats, setIsLoadingChats] = useState(false);
+
+  const handleMenuOpen = async (isOpen: boolean) => {
+    if (isOpen && savedChats.length === 0) {
+      setIsLoadingChats(true);
+      const chats = await listUserChats();
+      setSavedChats(chats);
+      setIsLoadingChats(false);
+    }
+  };
+
+
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={handleMenuOpen}>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="Open Menu">
           <Menu size={20} />
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="start" className="w-64 max-h-96 overflow-y-auto">
+      <DropdownMenuContent align="start" className="w-64">
         <DropdownMenuGroup>
           <DropdownMenuLabel>Chat Options</DropdownMenuLabel>
           <DropdownMenuItem onClick={onClearContext} className="cursor-pointer">
@@ -59,6 +83,38 @@ export default function ChatMenu({
             </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        
+        <DropdownMenuGroup>
+          <DropdownMenuSub>
+            <DropdownMenuSubTrigger>
+              <History className="mr-2 h-4 w-4" />
+              <span>Saved Chats</span>
+            </DropdownMenuSubTrigger>
+            <DropdownMenuPortal>
+              <DropdownMenuSubContent className="p-0">
+                <ScrollArea className="max-h-60">
+                   <div className="p-1">
+                      {isLoadingChats ? (
+                        <div className="flex items-center justify-center p-4">
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        </div>
+                      ) : savedChats.length > 0 ? (
+                        savedChats.map((chatId) => (
+                          <DropdownMenuItem key={chatId} onClick={() => onSelectChat(chatId)} className="cursor-pointer">
+                            <span>{chatId}</span>
+                          </DropdownMenuItem>
+                        ))
+                      ) : (
+                        <DropdownMenuLabel className="font-normal text-muted-foreground">No saved chats found.</DropdownMenuLabel>
+                      )}
+                    </div>
+                </ScrollArea>
+              </DropdownMenuSubContent>
+            </DropdownMenuPortal>
+          </DropdownMenuSub>
+        </DropdownMenuGroup>
+        
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
           <DropdownMenuLabel>Accessibility</DropdownMenuLabel>

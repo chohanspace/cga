@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function LoginPage() {
-  const { login, currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading } = useAuth();
   const router = useRouter();
 
    useEffect(() => {
@@ -26,5 +26,5 @@ export default function LoginPage() {
     );
   }
 
-  return <AuthForm mode="login" onSubmit={login} />;
+  return <AuthForm mode="login" />;
 }

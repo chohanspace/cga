@@ -8,7 +8,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
 export default function SignupPage() {
-  const { signup, currentUser, isLoading } = useAuth();
+  const { currentUser, isLoading } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
@@ -26,5 +26,5 @@ export default function SignupPage() {
     );
   }
 
-  return <AuthForm mode="signup" onSubmit={signup} />;
+  return <AuthForm mode="signup" />;
 }

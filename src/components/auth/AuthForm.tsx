@@ -14,17 +14,31 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import Link from 'next/link';
 import { Loader2, Check, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/context/AuthContext';
 
-const formSchema = z.object({
-  username: z.string().min(3, 'Username must be at least 3 characters').max(20, 'Username must be at most 20 characters'),
+
+const signupSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
   password: z.string().min(6, 'Password must be 6-18 characters').max(18, 'Password must be 6-18 characters'),
 });
 
-type FormData = z.infer<typeof formSchema>;
+const loginSchema = z.object({
+  email: z.string().email('Please enter a valid email address'),
+  password: z.string(), // No validation on login, server handles it
+});
+
+const otpSchema = z.object({
+  otp: z.string().min(6, 'OTP must be 6 digits').max(6, 'OTP must be 6 digits'),
+});
+
+
+type SignupFormData = z.infer<typeof signupSchema>;
+type LoginFormData = z.infer<typeof loginSchema>;
+type OtpFormData = z.infer<typeof otpSchema>;
+
 
 interface AuthFormProps {
   mode: 'login' | 'signup';
-  onSubmit: (data: FormData) => Promise<boolean>;
 }
 
 const TYPING_SPEED = 120;
@@ -37,10 +51,13 @@ interface AnimatedPhraseConfig {
   isFinal?: boolean;
 }
 
-export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
+export default function AuthForm({ mode }: AuthFormProps) {
+  const { signup, login, verifyOtpAndLogin, resendOtp } = useAuth();
+  const [authStep, setAuthStep] = useState<'credentials' | 'otp'>('credentials');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [authStatus, setAuthStatus] = useState<'idle' | 'pending' | 'success' | 'error'>('idle');
-
+  const [emailForOtp, setEmailForOtp] = useState('');
+  
   const [displayedText, setDisplayedText] = useState('');
   const [currentPhraseConfigIndex, setCurrentPhraseConfigIndex] = useState(0);
   const [charIndex, setCharIndex] = useState(0);
@@ -52,21 +69,16 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
     { text: "Welcome to ChohanGenAI" },
     { text: "Pakistan's first AI Assistant" },
     {
-      text: mode === 'login' ? "Log into ChohanGenAI to get started" : "Sign up in ChohanGenAI to get started",
+      text: mode === 'login' ? "Log into ChohanGenAI to get started" : "Sign up for ChohanGenAI to get started",
       isFinal: true,
     },
   ], [mode]);
 
   useEffect(() => {
+    // Animation logic remains the same
     const currentConfig = phraseConfigurations[currentPhraseConfigIndex];
-
-    if (!currentConfig || currentPhraseConfigIndex >= phraseConfigurations.length) {
-      return; 
-    }
-
-    if (isPausedForAnimation) {
-      return;
-    }
+    if (!currentConfig) return;
+    if (isPausedForAnimation) return;
 
     let animationStepTimeoutId: NodeJS.Timeout | undefined;
 
@@ -78,12 +90,8 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
         }, TYPING_SPEED);
       } else { 
         if (currentConfig.isFinal) return; 
-
         setIsPausedForAnimation(true); 
-        setTimeout(() => {
-          setIsDeleting(true);
-          setIsPausedForAnimation(false); 
-        }, PAUSE_DURATION_AFTER_TYPING);
+        setTimeout(() => { setIsDeleting(true); setIsPausedForAnimation(false); }, PAUSE_DURATION_AFTER_TYPING);
       }
     } else { 
       if (charIndex > 0) {
@@ -95,57 +103,128 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
         setIsPausedForAnimation(true); 
         setTimeout(() => {
           setIsDeleting(false);
-          setCurrentPhraseConfigIndex(prevIndex => {
-            if (prevIndex + 1 >= phraseConfigurations.length) {
-                return prevIndex; 
-            }
-            return prevIndex + 1;
-          });
+          setCurrentPhraseConfigIndex(prev => prev + 1 < phraseConfigurations.length ? prev + 1 : prev);
           setIsPausedForAnimation(false); 
         }, PAUSE_DURATION_BEFORE_NEXT_PHRASE);
       }
     }
 
-    return () => {
-      if (animationStepTimeoutId) {
-        clearTimeout(animationStepTimeoutId);
-      }
-    };
+    return () => { if (animationStepTimeoutId) clearTimeout(animationStepTimeoutId); };
   }, [charIndex, isDeleting, currentPhraseConfigIndex, phraseConfigurations, isPausedForAnimation]);
 
+  const formSchema = mode === 'signup' ? signupSchema : loginSchema;
 
-  const form = useForm<FormData>({
+  const form = useForm<SignupFormData | LoginFormData>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      username: '',
+      email: '',
       password: '',
     },
   });
+  
+  const otpForm = useForm<OtpFormData>({
+    resolver: zodResolver(otpSchema),
+    defaultValues: { otp: '' },
+  });
 
-  const handleSubmit = async (data: FormData) => {
+
+  const handleCredentialSubmit = async (data: SignupFormData | LoginFormData) => {
     setIsSubmitting(true);
     setAuthStatus('pending');
     
-    const success = await onSubmit(data);
+    let success: boolean;
+    if (mode === 'signup') {
+        success = await signup(data as SignupFormData);
+    } else {
+        success = await login(data as LoginFormData);
+    }
+
+    if (success) {
+        setAuthStatus('success');
+        setEmailForOtp(data.email);
+        setAuthStep('otp');
+    } else {
+        setAuthStatus('error');
+        setTimeout(() => {
+            setAuthStatus('idle');
+        }, 2000);
+    }
+    setIsSubmitting(false);
+  };
+  
+  const handleOtpSubmit = async (data: OtpFormData) => {
+    setIsSubmitting(true);
+    setAuthStatus('pending');
+    
+    const success = await verifyOtpAndLogin({ email: emailForOtp, otp: data.otp });
 
     if (success) {
       setAuthStatus('success');
+      // Redirect will be handled by AuthContext
     } else {
       setAuthStatus('error');
+      otpForm.setError('otp', { type: 'manual', message: 'Invalid or expired OTP.' });
       setTimeout(() => {
         setAuthStatus('idle');
-        setIsSubmitting(false); 
-      }, 2000); 
+      }, 2000);
     }
+    setIsSubmitting(false);
   };
-  
+
+  const handleResendOtp = async () => {
+    setIsSubmitting(true);
+    await resendOtp(emailForOtp);
+    setIsSubmitting(false);
+  }
+
   const currentPhraseIsDoneAndFinal = 
     phraseConfigurations[currentPhraseConfigIndex]?.isFinal && 
     charIndex === phraseConfigurations[currentPhraseConfigIndex]?.text.length;
 
+
+  if (authStep === 'otp') {
+    return (
+      <Card className="w-full max-w-sm shadow-2xl border-border/50">
+        <CardHeader>
+          <CardTitle className="text-3xl font-bold text-primary text-center">Enter Verification Code</CardTitle>
+          <CardDescription className="text-center pt-2">
+            A 6-digit OTP has been sent to <br/> <span className="font-semibold text-primary">{emailForOtp}</span>
+          </CardDescription>
+        </CardHeader>
+        <Form {...otpForm}>
+          <form onSubmit={otpForm.handleSubmit(handleOtpSubmit)}>
+            <CardContent className="space-y-6">
+              <FormField
+                control={otpForm.control}
+                name="otp"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>One-Time Password</FormLabel>
+                    <FormControl>
+                       <Input placeholder="_ _ _ _ _ _" {...field} disabled={isSubmitting} maxLength={6} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <Button type="submit" className="w-full" disabled={isSubmitting}>
+                 {authStatus === 'pending' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : 'Verify & Login'}
+              </Button>
+               <Button type="button" variant="link" onClick={handleResendOtp} disabled={isSubmitting}>
+                Didn't receive code? Resend
+              </Button>
+            </CardFooter>
+          </form>
+        </Form>
+      </Card>
+    )
+  }
+
   return (
     <Card className="w-full max-w-sm shadow-2xl border-border/50">
-      <CardHeader>
+       <CardHeader>
         <CardTitle 
             className="text-3xl font-bold text-primary flex items-center justify-center h-16 sm:h-20" 
             aria-live="polite"
@@ -166,16 +245,16 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
         </CardDescription>
       </CardHeader>
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(handleSubmit)}>
+        <form onSubmit={form.handleSubmit(handleCredentialSubmit)}>
           <CardContent className="space-y-6">
             <FormField
               control={form.control}
-              name="username"
+              name="email"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Username</FormLabel>
+                  <FormLabel>Email</FormLabel>
                   <FormControl>
-                    <Input placeholder="your_username" {...field} disabled={isSubmitting} />
+                    <Input type="email" placeholder="you@example.com" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -205,7 +284,7 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
               ) : authStatus === 'success' ? (
                 <>
                   <Check className="mr-2 h-5 w-5 text-green-500" />
-                  Success!
+                  Redirecting...
                 </>
               ) : authStatus === 'error' ? (
                 <>

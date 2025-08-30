@@ -6,38 +6,43 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { ref, get, set, update } from "firebase/database";
+import { ref, get, set, update, child } from "firebase/database";
 
 // Interface for the full user data stored with password
 interface User {
-  username: string; // Fixed identifier, used for login
-  password?: string; // Only for storage, not for currentUser state directly
-  nickname?: string; // Display name, changeable
+  username: string; // The part of the email before the @
+  password?: string; // In a real app, this MUST be hashed!
+  email: string; // Full email address
+  nickname?: string; 
   mobileNumber?: string;
-  email?: string;
   pfpUrl?: string;
+  otp?: string; // One-Time Password
+  otpExpires?: number; // OTP expiry timestamp
 }
 
 // Interface for the currentUser state and public profile view
 export interface UserProfile {
-  username: string; // Fixed identifier
-  nickname?: string; // Display name, changeable
+  username: string; // The part of the email before the @
+  email: string; // Full email address
+  nickname?: string; 
   mobileNumber?: string;
-  email?: string;
   pfpUrl?: string;
 }
 
 // Type for profile update data; username is not updatable
-export type UserProfileUpdate = Omit<Partial<UserProfile>, 'username'>;
+export type UserProfileUpdate = Omit<Partial<UserProfile>, 'username' | 'email'>;
 
 
 interface AuthContextType {
   currentUser: UserProfile | null;
   isLoading: boolean;
-  signup: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>; // Signup only needs username/password initially
-  login: (userData: Pick<User, 'username' | 'password'>) => Promise<boolean>;
+  signup: (userData: Pick<User, 'email' | 'password'>) => Promise<boolean>;
+  login: (userData: Pick<User, 'email' | 'password'>) => Promise<boolean>;
   logout: () => void;
   updateUserProfile: (profileData: UserProfileUpdate) => Promise<boolean>;
+  verifyOtpAndLogin: (otpData: { email: string, otp: string }) => Promise<boolean>;
+  resendOtp: (email: string) => Promise<void>;
+  listUserChats: () => Promise<string[]>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -62,8 +67,36 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const signup = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
-    if (!userData.password || userData.password.length < 6 || userData.password.length > 18) {
+  const sendOtpRequest = async (email: string): Promise<boolean> => {
+    try {
+      const response = await fetch('/api/send-otp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Failed to send OTP');
+      }
+      toast({
+        title: 'Verification Code Sent',
+        description: `An OTP has been sent to ${email}.`,
+      });
+      return true;
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: 'OTP Error',
+        description: error.message || 'Could not send verification code.',
+      });
+      return false;
+    }
+  };
+
+
+  const signup = useCallback(async (userData: Pick<User, 'email' | 'password'>): Promise<boolean> => {
+    const { email, password } = userData;
+    if (!password || password.length < 6 || password.length > 18) {
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -71,101 +104,111 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       });
       return false;
     }
+    if (!email || !email.includes('@')) {
+        toast({ variant: 'destructive', title: 'Signup Failed', description: 'Please provide a valid email.'});
+        return false;
+    }
 
-    const userRef = ref(db, `users/${userData.username}`);
+    const username = email.split('@')[0];
+    const userRef = ref(db, `users/${username}`);
     const userSnapshot = await get(userRef);
 
     if (userSnapshot.exists()) {
-      toast({
-        variant: 'destructive',
-        title: 'Signup Failed',
-        description: 'Username already taken. Please choose another.',
-      });
+      toast({ variant: 'destructive', title: 'Signup Failed', description: 'An account with this email already exists.' });
       return false;
     }
 
     const newUserForStorage: User = {
-        username: userData.username,
-        password: userData.password, // In a real app, this should be hashed!
-        nickname: userData.username,
+        username,
+        email,
+        password: password, // In a real app, this should be hashed!
+        nickname: username,
         mobileNumber: '',
-        email: '',
         pfpUrl: '',
     };
     
     try {
         await set(userRef, newUserForStorage);
+        // Do not log in yet, just send OTP
+        return await sendOtpRequest(email);
     } catch (error) {
         console.error("Error creating user in Realtime DB: ", error);
-        toast({
-            variant: 'destructive',
-            title: 'Signup Failed',
-            description: 'Could not create your account. Please try again.',
-        });
+        toast({ variant: 'destructive', title: 'Signup Failed', description: 'Could not create your account.' });
         return false;
     }
+  }, [toast]);
 
-    const userProfile: UserProfile = {
-        username: newUserForStorage.username,
-        nickname: newUserForStorage.nickname,
-        mobileNumber: newUserForStorage.mobileNumber,
-        email: newUserForStorage.email,
-        pfpUrl: newUserForStorage.pfpUrl,
-    };
-    setCurrentUser(userProfile);
-    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
-    
-    toast({
-      title: 'Signup Successful',
-      description: `Welcome, ${userProfile.nickname || userProfile.username}!`,
-    });
-    router.push('/');
-    return true;
-  }, [router, toast]);
-
-  const login = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
-    const userRef = ref(db, `users/${userData.username}`);
+  const login = useCallback(async (userData: Pick<User, 'email' | 'password'>): Promise<boolean> => {
+    const { email, password } = userData;
+    const username = email.split('@')[0];
+    const userRef = ref(db, `users/${username}`);
     
     try {
         const userSnapshot = await get(userRef);
 
-        if (!userSnapshot.exists() || userSnapshot.val().password !== userData.password) {
-          toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: 'Invalid username or password.',
-          });
+        if (!userSnapshot.exists() || userSnapshot.val().password !== password) {
+          toast({ variant: 'destructive', title: 'Login Failed', description: 'Invalid email or password.' });
           return false;
         }
 
-        const user = userSnapshot.val() as User;
-        const userProfile: UserProfile = {
-            username: user.username,
-            nickname: user.nickname || user.username,
-            mobileNumber: user.mobileNumber || '',
-            email: user.email || '',
-            pfpUrl: user.pfpUrl || '',
-        };
-        setCurrentUser(userProfile);
-        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
-        
-        toast({
-          title: 'Login Successful',
-          description: `Welcome back, ${userProfile.nickname || userProfile.username}!`,
-        });
-        router.push('/');
-        return true;
-
+        // Password is correct, now send OTP
+        return await sendOtpRequest(email);
     } catch(error) {
-        console.error("Error logging in: ", error);
-         toast({
-            variant: 'destructive',
-            title: 'Login Failed',
-            description: 'An error occurred during login. Please try again.',
-        });
+        console.error("Error during login credential check: ", error);
+         toast({ variant: 'destructive', title: 'Login Failed', description: 'An error occurred during login.' });
         return false;
     }
+  }, [toast]);
+  
+  const verifyOtpAndLogin = useCallback(async ({ email, otp }: { email: string, otp: string }): Promise<boolean> => {
+    const username = email.split('@')[0];
+    const userRef = ref(db, `users/${username}`);
+
+    try {
+      const userSnapshot = await get(userRef);
+      if (!userSnapshot.exists()) {
+        toast({ variant: 'destructive', title: 'Verification Failed', description: 'User not found.' });
+        return false;
+      }
+      
+      const user = userSnapshot.val() as User;
+      if (user.otp !== otp || (user.otpExpires && user.otpExpires < Date.now())) {
+        toast({ variant: 'destructive', title: 'Verification Failed', description: 'Invalid or expired OTP.' });
+        return false;
+      }
+      
+      // OTP is correct. Log the user in.
+      const userProfile: UserProfile = {
+          username: user.username,
+          email: user.email,
+          nickname: user.nickname || user.username,
+          mobileNumber: user.mobileNumber || '',
+          pfpUrl: user.pfpUrl || '',
+      };
+      setCurrentUser(userProfile);
+      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
+      
+      // Clear OTP from database after successful login
+      await update(userRef, { otp: null, otpExpires: null });
+
+      toast({
+        title: 'Login Successful',
+        description: `Welcome, ${userProfile.nickname || userProfile.username}!`,
+      });
+      router.push('/');
+      return true;
+
+    } catch (error) {
+      console.error("Error verifying OTP: ", error);
+      toast({ variant: 'destructive', title: 'Verification Error', description: 'An error occurred.' });
+      return false;
+    }
   }, [router, toast]);
+  
+  const resendOtp = useCallback(async (email: string) => {
+    if (!email) return;
+    await sendOtpRequest(email);
+  }, [toast]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
@@ -179,7 +222,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const updateUserProfile = useCallback(async (profileData: UserProfileUpdate): Promise<boolean> => {
     if (!currentUser) {
-        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in to update your profile.' });
+        toast({ variant: 'destructive', title: 'Error', description: 'You must be logged in.' });
         return false;
     }
 
@@ -216,10 +259,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
     return true;
   }, [currentUser, toast]);
+  
+  const listUserChats = useCallback(async (): Promise<string[]> => {
+    if (!currentUser) return [];
+    try {
+      const chatsRef = ref(db, `chats/${currentUser.username}`);
+      const snapshot = await get(chatsRef);
+      if (snapshot.exists()) {
+        return Object.keys(snapshot.val());
+      }
+      return [];
+    } catch (error) {
+      console.error("Error listing user chats:", error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not load saved chats.' });
+      return [];
+    }
+  }, [currentUser, toast]);
 
 
   return (
-    <AuthContext.Provider value={{ currentUser, isLoading, signup, login, logout, updateUserProfile }}>
+    <AuthContext.Provider value={{ currentUser, isLoading, signup, login, logout, updateUserProfile, verifyOtpAndLogin, resendOtp, listUserChats }}>
       {children}
     </AuthContext.Provider>
   );

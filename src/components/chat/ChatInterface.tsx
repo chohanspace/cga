@@ -29,6 +29,7 @@ export interface Message {
 const AVAILABLE_MODELS = ['CGA-2.1', '2.1-Pro', '3 Plus'];
 const DEFAULT_MODEL = 'CGA-2.1';
 const GENERATE_IMAGE_COMMAND = '[GENERATE_IMAGE:';
+const DEFAULT_CHAT_ID = 'default';
 
 const samplePrompts: string[] = [
   "Explain quantum computing in simple terms.",
@@ -198,6 +199,7 @@ export default function ChatInterface() {
   const [conversationHistory, setConversationHistory] = useState<Message[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [selectedModel, setSelectedModel] = useState<string>(DEFAULT_MODEL);
+  const [activeChatId, setActiveChatId] = useState<string>(DEFAULT_CHAT_ID);
   const [attachedFile, setAttachedFile] = useState<{ name: string; dataUri: string; previewUrl: string } | null>(null);
   const { toast } = useToast();
   const { currentUser, logout } = useAuth();
@@ -206,7 +208,8 @@ export default function ChatInterface() {
   const [isAiGenerationStopped, setIsAiGenerationStopped] = useState(false);
   const isAiGenerationStoppedRef = useRef(isAiGenerationStopped);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
-  const chatPath = currentUser ? `chats/${currentUser.username}` : null;
+  
+  const chatPath = currentUser ? `chats/${currentUser.username}/${activeChatId}` : null;
 
   useEffect(() => {
     isAiGenerationStoppedRef.current = isAiGenerationStopped;
@@ -216,7 +219,6 @@ export default function ChatInterface() {
     const shuffleArray = (array: string[]) => {
       let currentIndex = array.length, randomIndex;
       const newArray = [...array]; 
-
       while (currentIndex !== 0) {
         randomIndex = Math.floor(Math.random() * currentIndex);
         currentIndex--;
@@ -226,7 +228,7 @@ export default function ChatInterface() {
       return newArray;
     }
     setSuggestedPrompts(shuffleArray(samplePrompts).slice(0, 5));
-  }, []);
+  }, [activeChatId]); // Reshuffle when chat changes
 
   useEffect(() => {
     if (!chatPath) return;
@@ -254,14 +256,14 @@ export default function ChatInterface() {
         const welcomeMessage: Message = {
             id: 'welcome-message-initial',
             role: 'model',
-            content: `Hello ${displayName}! I am ChohanGenAI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
+            content: `Hello ${displayName}! Welcome to your new chat. How can I assist? ✨`,
             timestamp: Date.now()
         };
-        set(chatRef, { messages: [welcomeMessage], model: selectedModel });
+        set(chatRef, { messages: [welcomeMessage], model: selectedModel, title: activeChatId, createdAt: Date.now() });
       }
     });
 
-    return () => off(chatRef);
+    return () => off(chatRef, 'value', unsubscribe);
   }, [chatPath, currentUser, selectedModel]);
   
   const handlePromptSuggestionClick = (promptText: string) => {
@@ -334,7 +336,7 @@ export default function ChatInterface() {
       if (!chatPath) return;
       const chatRef = ref(db, chatPath);
       try {
-          await set(chatRef, { messages: newHistory, model: selectedModel });
+          await update(chatRef, { messages: newHistory, model: selectedModel });
       } catch (error) {
           console.error("Error updating Realtime DB history:", error);
           toast({
@@ -466,33 +468,15 @@ export default function ChatInterface() {
     }
   };
 
-  const handleClearContext = async () => {
-    if (!chatPath) return;
-
-    if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
-    }
-    if (isLoadingAI) {
-        handleStopAiGeneration();
-    }
-    setIsAiGenerationStopped(false); 
-    isAiGenerationStoppedRef.current = false;
-    if (!isLoadingAI) setIsLoadingAI(false);
-
-    const welcomeMessage: Message = {
-      id: 'welcome-message-cleared',
-      role: 'model',
-      content: `Context cleared. I am now using model ${selectedModel}. How can I help you now? ✨`,
-      timestamp: Date.now()
-    };
-    
-    await updateDatabaseHistory([welcomeMessage]);
-    handleClearAttachment();
-    toast({
-        title: 'Context Cleared',
-        description: 'The conversation history has been reset.',
-    });
+  const handleNewChat = () => {
+    const newChatId = `chat_${Date.now()}`;
+    setActiveChatId(newChatId);
+    setConversationHistory([]); // Immediately clear visual history
   };
+
+  const handleSelectChat = (chatId: string) => {
+    setActiveChatId(chatId);
+  }
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
@@ -537,11 +521,12 @@ export default function ChatInterface() {
               currentModel={selectedModel}
               onModelChange={handleModelChange}
               availableModels={AVAILABLE_MODELS}
-              onClearContext={handleClearContext}
+              onClearContext={handleNewChat}
               onLogout={logout}
               onOpenEditProfile={() => setIsEditProfileOpen(true)}
               isSpeechOutputEnabled={isSpeechOutputEnabled}
               onToggleSpeechOutput={toggleSpeechOutput}
+              onSelectChat={handleSelectChat}
             />
           )}
           <div className="flex items-center gap-2">
@@ -574,7 +559,7 @@ export default function ChatInterface() {
           inputValue={inputValue}
           setInputValue={setInputValue}
           onSubmit={handleSubmit}
-          onClearContext={handleClearContext}
+          onClearContext={handleNewChat}
           isLoading={isLoadingAI}
           canClearContext={conversationHistory.filter(msg => !msg.id.startsWith('welcome-')).length > 0}
           onFileAttach={handleFileAttach}
