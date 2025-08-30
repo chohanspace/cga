@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -195,24 +196,62 @@ export default function AdminPage() {
                       <TableCell>{user.email}</TableCell>
                       <TableCell>{user.nickname}</TableCell>
                       <TableCell className="text-right">
-                        <Dialog open={isResetDialogOpen && selectedUser?.username === user.username} onOpenChange={(isOpen) => {
+                        <Dialog 
+                          open={isResetDialogOpen && selectedUser?.username === user.username} 
+                          onOpenChange={(isOpen) => {
                             if (!isOpen) {
                                 setIsResetDialogOpen(false);
                                 setSelectedUser(null);
                                 resetPasswordForm.reset();
+                            } else {
+                                setSelectedUser(user);
+                                setIsResetDialogOpen(true);
                             }
                         }}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="mr-2" onClick={() => {
-                                setSelectedUser(user);
-                                setIsResetDialogOpen(true);
-                            }}>
+                            <Button variant="outline" size="sm" className="mr-2">
                               <KeyRound className="mr-1 h-4 w-4" /> Reset Pass
                             </Button>
                           </DialogTrigger>
                           <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.username)}>
                             <Trash2 className="mr-1 h-4 w-4" /> Delete
                           </Button>
+                          {isResetDialogOpen && selectedUser?.username === user.username && (
+                            <DialogContent>
+                                <DialogHeader>
+                                    <DialogTitle>Reset Password for {selectedUser.nickname}</DialogTitle>
+                                    <DialogDescription>
+                                        Enter a new password. The user will not be notified.
+                                    </DialogDescription>
+                                </DialogHeader>
+                                <Form {...resetPasswordForm}>
+                                    <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 py-4">
+                                        <FormField
+                                            control={resetPasswordForm.control}
+                                            name="newPassword"
+                                            render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>New Password</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="text" placeholder="Enter new temporary password" {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                            />
+                                        <DialogFooter>
+                                            <DialogClose asChild>
+                                                <Button type="button" variant="secondary">Cancel</Button>
+                                            </DialogClose>
+                                            <Button type="submit" disabled={isLoading}>
+                                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                                Set Password
+                                            </Button>
+                                        </DialogFooter>
+                                    </form>
+                                </Form>
+                            </DialogContent>
+                          )}
                         </Dialog>
                       </TableCell>
                     </TableRow>
@@ -220,42 +259,6 @@ export default function AdminPage() {
                 )}
               </TableBody>
             </Table>
-             {isResetDialogOpen && selectedUser && (
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Reset Password for {selectedUser.nickname}</DialogTitle>
-                        <DialogDescription>
-                            Enter a new password. The user will not be notified.
-                        </DialogDescription>
-                    </DialogHeader>
-                    <Form {...resetPasswordForm}>
-                        <form onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 py-4">
-                             <FormField
-                                control={resetPasswordForm.control}
-                                name="newPassword"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>New Password</FormLabel>
-                                        <FormControl>
-                                            <Input type="text" placeholder="Enter new temporary password" {...field} />
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                                />
-                            <DialogFooter>
-                                <DialogClose asChild>
-                                    <Button type="button" variant="secondary">Cancel</Button>
-                                </DialogClose>
-                                <Button type="submit" disabled={isLoading}>
-                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Set Password
-                                </Button>
-                            </DialogFooter>
-                        </form>
-                    </Form>
-                </DialogContent>
-            )}
           </div>
         </CardContent>
       </Card>
