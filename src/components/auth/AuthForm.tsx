@@ -138,6 +138,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             setAuthStatus('success');
             setEmailForOtp(data.email);
             setAuthStep('otp');
+            otpForm.reset({ otp: '' }); // Clear OTP form
             if (result.needsVerification) {
                 form.setError('email', { type: 'manual', message: 'This email is pending verification. Check your inbox for an OTP.' });
             }
@@ -151,6 +152,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             setAuthStatus('success');
             setEmailForOtp(data.email);
             setAuthStep('otp');
+            otpForm.reset({ otp: '' }); // Clear OTP form
         } else {
             setAuthStatus('error');
             setTimeout(() => setAuthStatus('idle'), 2000);
@@ -335,5 +337,3 @@ export default function AuthForm({ mode }: AuthFormProps) {
     </Card>
   );
 }
-
-    
