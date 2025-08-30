@@ -10,12 +10,14 @@ import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
-import Image from 'next/image';
+import { db } from '@/lib/firebase';
+import { doc, setDoc, onSnapshot, collection, orderBy, query, limit } from "firebase/firestore";
 
 export interface Message {
   id: string;
   role: 'user' | 'model';
   content: string;
+  timestamp: number;
   imageUrl?: string;
   attachment?: {
     url: string;
@@ -24,8 +26,8 @@ export interface Message {
   isGeneratingImage?: boolean;
 }
 
-const AVAILABLE_MODELS = ['ha-1.1', 'ha-1.2', 'ha-1.3', 'ha-1.4'];
-const DEFAULT_MODEL = 'ha-1.4';
+const AVAILABLE_MODELS = ['CGA-2.1', '2.1-Pro', '3 Plus'];
+const DEFAULT_MODEL = 'CGA-2.1';
 const GENERATE_IMAGE_COMMAND = '[GENERATE_IMAGE:';
 
 const samplePrompts: string[] = [
@@ -204,13 +206,13 @@ export default function ChatInterface() {
   const [isAiGenerationStopped, setIsAiGenerationStopped] = useState(false);
   const isAiGenerationStoppedRef = useRef(isAiGenerationStopped);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
+  const chatDocId = currentUser ? `chat_${currentUser.username}` : null;
 
   useEffect(() => {
     isAiGenerationStoppedRef.current = isAiGenerationStopped;
   }, [isAiGenerationStopped]);
 
   useEffect(() => {
-    // Shuffle prompts on component mount
     const shuffleArray = (array: string[]) => {
       let currentIndex = array.length, randomIndex;
       const newArray = [...array]; 
@@ -227,17 +229,41 @@ export default function ChatInterface() {
   }, []);
 
   useEffect(() => {
-    if (currentUser && conversationHistory.length === 0) {
-        const displayName = currentUser.nickname || currentUser.username;
-        setConversationHistory([
-        {
+    if (!chatDocId) return;
+
+    const chatDocRef = doc(db, "chats", chatDocId);
+
+    const unsubscribe = onSnapshot(chatDocRef, (doc) => {
+      if (doc.exists()) {
+        const data = doc.data();
+        const history = data.messages || [];
+        setConversationHistory(history);
+
+        if (history.length === 0) {
+            const displayName = currentUser?.nickname || currentUser?.username;
+            const welcomeMessage: Message = {
+                id: 'welcome-message-initial',
+                role: 'model',
+                content: `Hello ${displayName}! I am ChohanGenAI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
+                timestamp: Date.now()
+            };
+            setConversationHistory([welcomeMessage]);
+        }
+      } else {
+        // Doc doesn't exist, create it with a welcome message
+        const displayName = currentUser?.nickname || currentUser?.username;
+        const welcomeMessage: Message = {
             id: 'welcome-message-initial',
             role: 'model',
             content: `Hello ${displayName}! I am ChohanGenAI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
-        },
-        ]);
-    }
-  }, [currentUser, selectedModel, conversationHistory.length]);
+            timestamp: Date.now()
+        };
+        setDoc(chatDocRef, { messages: [welcomeMessage], model: selectedModel });
+      }
+    });
+
+    return () => unsubscribe();
+  }, [chatDocId, currentUser, selectedModel]);
   
   const handlePromptSuggestionClick = (promptText: string) => {
     setInputValue(promptText);
@@ -284,7 +310,7 @@ export default function ChatInterface() {
   const handleStopAiGeneration = useCallback(() => {
     setIsAiGenerationStopped(true);
     isAiGenerationStoppedRef.current = true;
-    setIsLoadingAI(false); // Immediately set loading to false
+    setIsLoadingAI(false);
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
       window.speechSynthesis.cancel();
     }
@@ -303,61 +329,78 @@ export default function ChatInterface() {
         }
         return prevHistory;
     });
-  }, []); // No direct dependency on isLoadingAI to avoid loops, relies on isAiGenerationStoppedRef
+  }, []);
+
+  const updateFirestoreHistory = async (newHistory: Message[]) => {
+      if (!chatDocId) return;
+      const chatDocRef = doc(db, "chats", chatDocId);
+      try {
+          await setDoc(chatDocRef, { messages: newHistory, model: selectedModel }, { merge: true });
+      } catch (error) {
+          console.error("Error updating Firestore history:", error);
+          toast({
+              variant: 'destructive',
+              title: 'Sync Error',
+              description: 'Could not save the last message.',
+          });
+      }
+  };
+
 
   const handleSubmit = async (currentInputText: string) => {
     const finalInput = currentInputText.trim();
-
-    if ((!finalInput && !attachedFile) || isLoadingAI) return;
+    if ((!finalInput && !attachedFile) || isLoadingAI || !chatDocId) return;
 
     setIsLoadingAI(true);
-    setIsAiGenerationStopped(false); 
+    setIsAiGenerationStopped(false);
     isAiGenerationStoppedRef.current = false;
 
     const userMessage: Message = {
       id: `user-${Date.now()}`,
       role: 'user',
       content: finalInput,
+      timestamp: Date.now(),
       ...(attachedFile ? { attachment: { url: attachedFile.previewUrl, name: attachedFile.name } } : {}),
     };
 
-    const historyForAI = conversationHistory
-      .filter(msg => msg.id !== 'welcome-message-initial' && msg.id !== 'welcome-message-cleared')
-      .map(msg => ({
-        role: msg.role,
-        content: msg.content,
-      }));
+    const newHistoryWithUserMessage = [...conversationHistory, userMessage];
+    updateFirestoreHistory(newHistoryWithUserMessage);
 
-    setConversationHistory(prev => [...prev, userMessage]);
     setInputValue(''); 
     const currentAttachmentDataUri = attachedFile?.dataUri;
-    handleClearAttachment(); 
+    handleClearAttachment();
 
     try {
+      const historyForAI = conversationHistory
+        .filter(msg => msg.id.startsWith('user-') || msg.id.startsWith('model-'))
+        .map(msg => ({ role: msg.role, content: msg.content }));
+
       const aiInput: ManageConversationContextInput = {
         userInput: finalInput,
         conversationHistory: historyForAI,
         attachmentDataUri: currentAttachmentDataUri,
       };
       
-      // Short delay to allow stop signal to register if clicked immediately
       await new Promise(resolve => setTimeout(resolve, 50)); 
-      if (isAiGenerationStoppedRef.current) { return; } // Stop button already handled isLoadingAI
+      if (isAiGenerationStoppedRef.current) { return; }
 
       const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
       
-      if (isAiGenerationStoppedRef.current) { return; } // Stop button already handled isLoadingAI
+      if (isAiGenerationStoppedRef.current) { return; }
+
+      let finalAiHistory = newHistoryWithUserMessage;
 
       if (result.response.startsWith(GENERATE_IMAGE_COMMAND)) {
         const imagePrompt = result.response.substring(GENERATE_IMAGE_COMMAND.length, result.response.length - 1).trim();
-        const generatingMessageId = `model-generating-${Date.now()}`;
         const generatingMessage: Message = {
-          id: generatingMessageId,
+          id: `model-generating-${Date.now()}`,
           role: 'model',
           content: `Generating an image of: "${imagePrompt}"...`,
           isGeneratingImage: true,
+          timestamp: Date.now(),
         };
-        setConversationHistory(prev => [...prev, generatingMessage]);
+        const historyWithGeneratingMsg = [...newHistoryWithUserMessage, generatingMessage];
+        updateFirestoreHistory(historyWithGeneratingMsg);
 
         try {
           if (isAiGenerationStoppedRef.current) { return; }
@@ -369,8 +412,9 @@ export default function ChatInterface() {
             role: 'model',
             content: `Here's an image of "${imagePrompt}":`,
             imageUrl: imageResult.imageUrl,
+            timestamp: Date.now(),
           };
-          setConversationHistory(prev => prev.map(msg => msg.id === generatingMessageId ? imageMessage : msg));
+          finalAiHistory = historyWithGeneratingMsg.map(msg => msg.id === generatingMessage.id ? imageMessage : msg);
         } catch (imageError: any) {
           console.error('Error generating image:', imageError);
           if (isAiGenerationStoppedRef.current) { return; }
@@ -378,71 +422,72 @@ export default function ChatInterface() {
             id: `model-error-${Date.now()}`,
             role: 'model',
             content: "Sorry, I couldn't generate the image. Please try again.",
+            timestamp: Date.now(),
           };
-          setConversationHistory(prev => prev.map(msg => msg.id === generatingMessageId ? errorMsg : msg));
+          finalAiHistory = historyWithGeneratingMsg.map(msg => msg.id === generatingMessage.id ? errorMsg : msg);
           toast({
             variant: 'destructive',
             title: 'Image Generation Failed',
-            description: imageError?.message || 'Could not generate the image. The model might be unavailable or the prompt too complex.',
+            description: imageError?.message || 'Could not generate the image.',
           });
         } finally {
-          // This 'finally' is specific to the image generation try-catch
-          if (!isAiGenerationStoppedRef.current) {
-            setIsLoadingAI(false); // Image generation is complete (success or fail)
-          }
+            updateFirestoreHistory(finalAiHistory);
+            if (!isAiGenerationStoppedRef.current) {
+                setIsLoadingAI(false);
+            }
         }
       } else {
-        // Text-only response. isLoadingAI remains true.
-        // MessageItem will call handleAiDisplayFinalized when typing is done or stopped.
         const aiMessage: Message = {
           id: `model-${Date.now()}`,
           role: 'model',
           content: result.response,
+          timestamp: Date.now(),
         };
-        setConversationHistory(prev => [...prev, aiMessage]);
+        finalAiHistory = [...newHistoryWithUserMessage, aiMessage];
+        updateFirestoreHistory(finalAiHistory);
       }
 
     } catch (error) {
-      if (isAiGenerationStoppedRef.current) {
-        console.log('AI processing was stopped, error likely due to interruption or already handled.');
-      } else {
+      if (!isAiGenerationStoppedRef.current) {
         console.error('Error calling AI:', error);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Failed to get response from ChohanGenAI. Please check your configuration and try again.',
+          description: 'Failed to get response from ChohanGenAI.',
         });
-        const aiMessage: Message = {
-          id: `model-error-${Date.now()}`,
-          role: 'model',
-          content: "I encountered an error. Please try again.",
+        const errorMessage: Message = {
+            id: `model-error-${Date.now()}`,
+            role: 'model',
+            content: "I encountered an error. Please try again.",
+            timestamp: Date.now(),
         };
-        setConversationHistory(prev => [...prev, aiMessage]);
-        setIsLoadingAI(false); // Set loading false on general error if not stopped
+        updateFirestoreHistory([...newHistoryWithUserMessage, errorMessage]);
+        setIsLoadingAI(false);
       }
     }
-    // No general 'finally' here for setIsLoadingAI(false) - it's handled by specific paths or callbacks
   };
 
-  const handleClearContext = () => {
+  const handleClearContext = async () => {
+    if (!chatDocId) return;
+
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
     }
     if (isLoadingAI) {
-        handleStopAiGeneration(); // This will also set isLoadingAI to false
+        handleStopAiGeneration();
     }
-    // Ensure states are reset even if not loading
     setIsAiGenerationStopped(false); 
     isAiGenerationStoppedRef.current = false;
-    if (!isLoadingAI) setIsLoadingAI(false); // If it wasn't loading, ensure it's false
+    if (!isLoadingAI) setIsLoadingAI(false);
 
-    setConversationHistory([
-      {
-        id: 'welcome-message-cleared',
-        role: 'model',
-        content: `Context cleared. I am now using model ${selectedModel}. How can I help you now? ✨`,
-      },
-    ]);
+    const welcomeMessage: Message = {
+      id: 'welcome-message-cleared',
+      role: 'model',
+      content: `Context cleared. I am now using model ${selectedModel}. How can I help you now? ✨`,
+      timestamp: Date.now()
+    };
+    
+    await updateFirestoreHistory([welcomeMessage]);
     handleClearAttachment();
     toast({
         title: 'Context Cleared',
@@ -452,14 +497,14 @@ export default function ChatInterface() {
 
   const handleModelChange = (model: string) => {
     setSelectedModel(model);
-    setConversationHistory(prev => [
-        ...prev.filter(msg => msg.id !== 'welcome-message-initial' && msg.id !== 'welcome-message-cleared'),
-         {
-            id: `model-change-${Date.now()}`,
-            role: 'model',
-            content: `Switched to model **${model}**. How can I assist you?`
-        }
-    ]);
+    const modelChangeMessage: Message = {
+        id: `model-change-${Date.now()}`,
+        role: 'model',
+        content: `Switched to model **${model}**. How can I assist you?`,
+        timestamp: Date.now()
+    };
+    const newHistory = [...conversationHistory.filter(m => !m.id.startsWith('welcome-')), modelChangeMessage];
+    updateFirestoreHistory(newHistory);
     toast({
         title: 'Model Changed',
         description: `Now using model ${model}.`,
@@ -532,7 +577,7 @@ export default function ChatInterface() {
           onSubmit={handleSubmit}
           onClearContext={handleClearContext}
           isLoading={isLoadingAI}
-          canClearContext={conversationHistory.filter(msg => msg.id !== 'welcome-message-cleared' && msg.id !== 'welcome-message-initial').length > 0}
+          canClearContext={conversationHistory.filter(msg => !msg.id.startsWith('welcome-')).length > 0}
           onFileAttach={handleFileAttach}
           attachedFile={attachedFile ? { name: attachedFile.name, previewUrl: attachedFile.previewUrl } : null}
           onClearAttachment={handleClearAttachment}
@@ -551,4 +596,3 @@ export default function ChatInterface() {
     </div>
   );
 }
-    

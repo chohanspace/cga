@@ -5,6 +5,8 @@ import type React from 'react';
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
+import { db } from '@/lib/firebase';
+import { collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
 
 // Interface for the full user data stored with password
 interface User {
@@ -40,7 +42,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const USERS_STORAGE_KEY = 'chat_app_users';
 const CURRENT_USER_STORAGE_KEY = 'chat_app_current_user';
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
@@ -61,25 +62,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setIsLoading(false);
   }, []);
 
-  const getUsers = useCallback((): User[] => {
-    try {
-      const storedUsers = localStorage.getItem(USERS_STORAGE_KEY);
-      return storedUsers ? JSON.parse(storedUsers) : [];
-    } catch (error) {
-      console.error("Failed to load users from localStorage", error);
-      return [];
-    }
-  }, []);
-
-  const saveUsers = useCallback((users: User[]) => {
-    try {
-      localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-    } catch (error)
-      {
-      console.error("Failed to save users to localStorage", error);
-    }
-  }, []);
-
   const signup = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
     if (!userData.password || userData.password.length < 6 || userData.password.length > 18) {
       toast({
@@ -90,10 +72,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    const users = getUsers();
-    const existingUser = users.find(u => u.username === userData.username);
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("username", "==", userData.username));
+    const querySnapshot = await getDocs(q);
 
-    if (existingUser) {
+    if (!querySnapshot.empty) {
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -102,18 +85,28 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    // Create the full User object for storage
     const newUserForStorage: User = {
         username: userData.username,
-        password: userData.password,
-        nickname: userData.username, // Default nickname to username
+        password: userData.password, // In a real app, this should be hashed!
+        nickname: userData.username,
         mobileNumber: '',
         email: '',
         pfpUrl: '',
     };
-    saveUsers([...users, newUserForStorage]);
+    
+    try {
+        await setDoc(doc(usersRef, userData.username), newUserForStorage);
+    } catch (error) {
+        console.error("Error creating user in Firestore: ", error);
+        toast({
+            variant: 'destructive',
+            title: 'Signup Failed',
+            description: 'Could not create your account. Please try again.',
+        });
+        return false;
+    }
 
-    // Create the UserProfile for currentUser state and CURRENT_USER_STORAGE_KEY
+
     const userProfile: UserProfile = {
         username: newUserForStorage.username,
         nickname: newUserForStorage.nickname,
@@ -122,61 +115,63 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         pfpUrl: newUserForStorage.pfpUrl,
     };
     setCurrentUser(userProfile);
-    try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
-    } catch (error) {
-      console.error("Failed to save current user to localStorage", error);
-    }
+    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
+    
     toast({
       title: 'Signup Successful',
       description: `Welcome, ${userProfile.nickname || userProfile.username}!`,
     });
     router.push('/');
     return true;
-  }, [getUsers, saveUsers, router, toast]);
+  }, [router, toast]);
 
   const login = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
-    const users = getUsers();
-    const user = users.find(u => u.username === userData.username);
-
-    if (!user || user.password !== userData.password) {
-      toast({
-        variant: 'destructive',
-        title: 'Login Failed',
-        description: 'Invalid username or password.',
-      });
-      return false;
-    }
-
-    // Create UserProfile from the stored User data
-    const userProfile: UserProfile = {
-        username: user.username,
-        nickname: user.nickname || user.username, // Fallback to username if nickname isn't set
-        mobileNumber: user.mobileNumber || '',
-        email: user.email || '',
-        pfpUrl: user.pfpUrl || '',
-    };
-    setCurrentUser(userProfile);
+    const userDocRef = doc(db, "users", userData.username);
+    
     try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
-    } catch (error) {
-      console.error("Failed to save current user to localStorage", error);
+        const userDoc = await getDoc(userDocRef);
+
+        if (!userDoc.exists() || userDoc.data().password !== userData.password) {
+          toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: 'Invalid username or password.',
+          });
+          return false;
+        }
+
+        const user = userDoc.data() as User;
+        const userProfile: UserProfile = {
+            username: user.username,
+            nickname: user.nickname || user.username,
+            mobileNumber: user.mobileNumber || '',
+            email: user.email || '',
+            pfpUrl: user.pfpUrl || '',
+        };
+        setCurrentUser(userProfile);
+        localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(userProfile));
+        
+        toast({
+          title: 'Login Successful',
+          description: `Welcome back, ${userProfile.nickname || userProfile.username}!`,
+        });
+        router.push('/');
+        return true;
+
+    } catch(error) {
+        console.error("Error logging in: ", error);
+         toast({
+            variant: 'destructive',
+            title: 'Login Failed',
+            description: 'An error occurred during login. Please try again.',
+        });
+        return false;
     }
-    toast({
-      title: 'Login Successful',
-      description: `Welcome back, ${userProfile.nickname || userProfile.username}!`,
-    });
-    router.push('/');
-    return true;
-  }, [getUsers, router, toast]);
+  }, [router, toast]);
 
   const logout = useCallback(() => {
     setCurrentUser(null);
-    try {
-      localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
-    } catch (error) {
-      console.error("Failed to remove current user from localStorage", error);
-    }
+    localStorage.removeItem(CURRENT_USER_STORAGE_KEY);
     router.push('/auth/login');
     toast({
       title: 'Logged Out',
@@ -190,56 +185,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
     }
 
-    const users = getUsers();
-    const userToUpdateIndex = users.findIndex(u => u.username === currentUser.username);
+    const userDocRef = doc(db, "users", currentUser.username);
+    
+    // Default nickname to username if it's cleared
+    const newNickname = profileData.nickname !== undefined 
+      ? (profileData.nickname.trim() === '' ? currentUser.username : profileData.nickname) 
+      : currentUser.nickname;
+      
+    const profileUpdateData = {
+        ...profileData,
+        nickname: newNickname
+    };
 
-    if (userToUpdateIndex === -1) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Original user not found for update.' });
+    try {
+        await updateDoc(userDocRef, profileUpdateData);
+    } catch(error) {
+        console.error("Error updating profile: ", error);
+        toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update your profile.' });
         return false;
     }
 
-    // Update the full User object in USERS_STORAGE_KEY
-    const StoredUser = users[userToUpdateIndex];
-    const updatedStoredUser: User = {
-        ...StoredUser, // Keeps username and password
-        nickname: profileData.nickname !== undefined ? (profileData.nickname.trim() === '' ? StoredUser.username : profileData.nickname) : StoredUser.nickname,
-        mobileNumber: profileData.mobileNumber !== undefined ? profileData.mobileNumber : StoredUser.mobileNumber,
-        email: profileData.email !== undefined ? profileData.email : StoredUser.email,
-        pfpUrl: profileData.pfpUrl !== undefined ? profileData.pfpUrl : StoredUser.pfpUrl,
-    };
-    
-    // If nickname is cleared, default it back to username
-    if (updatedStoredUser.nickname === '') {
-        updatedStoredUser.nickname = updatedStoredUser.username;
-    }
-
-
-    const updatedUsersArray = [...users];
-    updatedUsersArray[userToUpdateIndex] = updatedStoredUser;
-    saveUsers(updatedUsersArray);
-
-    // Prepare the UserProfile for currentUser state and CURRENT_USER_STORAGE_KEY
     const updatedCurrentUserProfile: UserProfile = {
-      username: currentUser.username, // Username remains the same, taken from current state
-      nickname: updatedStoredUser.nickname,
-      mobileNumber: updatedStoredUser.mobileNumber,
-      email: updatedStoredUser.email,
-      pfpUrl: updatedStoredUser.pfpUrl,
+      ...currentUser,
+      ...profileUpdateData,
     };
 
     setCurrentUser(updatedCurrentUserProfile);
-    try {
-      localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(updatedCurrentUserProfile));
-    } catch (error) {
-      console.error("Failed to save updated current user to localStorage", error);
-    }
+    localStorage.setItem(CURRENT_USER_STORAGE_KEY, JSON.stringify(updatedCurrentUserProfile));
     
     toast({
         title: 'Profile Updated',
         description: 'Your profile details have been saved.',
     });
     return true;
-  }, [currentUser, getUsers, saveUsers, toast]);
+  }, [currentUser, toast]);
 
 
   return (

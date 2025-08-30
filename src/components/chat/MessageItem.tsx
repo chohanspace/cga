@@ -399,4 +399,3 @@ export default function MessageItem({ message, isSpeechOutputEnabled, isGenerati
     </div>
   );
 }
-    
