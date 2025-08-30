@@ -22,13 +22,13 @@ export interface LiveMessage {
   isThinking?: boolean;
 }
 
-const HARIUM_AI_USERNAME = 'HariumAI_Assistant';
-const HARIUM_AI_NICKNAME = 'Harium AI';
-const HARIUM_AI_MENTION_TRIGGER = '@hariumai';
+const CHOHANGENAI_USERNAME = 'ChohanGenAI_Assistant';
+const CHOHANGENAI_NICKNAME = 'ChohanGenAI';
+const CHOHANGENAI_MENTION_TRIGGER = '@chohangenai';
 
-const hariumAiProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
-  username: HARIUM_AI_USERNAME,
-  nickname: HARIUM_AI_NICKNAME,
+const chohanGenAiProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
+  username: CHOHANGENAI_USERNAME,
+  nickname: CHOHANGENAI_NICKNAME,
   pfpUrl: '', 
 };
 
@@ -42,7 +42,7 @@ const SystemProfile: Pick<UserProfile, 'username' | 'nickname' | 'pfpUrl'> = {
 const LiveMessageItemSimplified = ({ message, currentUsername }: { message: LiveMessage; currentUsername: string }) => {
   const isCurrentUserMessage = message.sender.username === currentUsername;
   const isSystemMessage = message.sender.username === 'System';
-  const isHariumAiMessage = message.sender.username === HARIUM_AI_USERNAME;
+  const isChohanGenAiMessage = message.sender.username === CHOHANGENAI_USERNAME;
   const { currentUser } = useAuth(); // Get full currentUser for avatar
 
 
@@ -69,14 +69,14 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
     >
       {!isCurrentUserMessage && (
         <Avatar className="h-8 w-8 shrink-0 border border-border/50 shadow-md self-start">
-          {message.sender.pfpUrl && !isHariumAiMessage ? (
+          {message.sender.pfpUrl && !isChohanGenAiMessage ? (
             <AvatarImage src={message.sender.pfpUrl} alt={message.sender.nickname || message.sender.username} />
           ) : (
             <AvatarFallback className={cn(
               "bg-secondary text-secondary-foreground",
-              isHariumAiMessage && "bg-accent text-accent-foreground"
+              isChohanGenAiMessage && "bg-accent text-accent-foreground"
             )}>
-              {isHariumAiMessage ? <Bot size={18} /> : <Users size={18} />}
+              {isChohanGenAiMessage ? <Bot size={18} /> : <Users size={18} />}
             </AvatarFallback>
           )}
         </Avatar>
@@ -86,7 +86,7 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
           'relative max-w-[70%] p-3 shadow-lg text-sm flex flex-col gap-0.5',
           isCurrentUserMessage
             ? 'bg-primary/70 backdrop-blur-sm text-primary-foreground rounded-lg rounded-br-sm border border-primary/40'
-            : isHariumAiMessage 
+            : isChohanGenAiMessage 
               ? 'bg-accent/70 backdrop-blur-sm text-accent-foreground rounded-lg rounded-bl-sm border border-accent/40'
               : 'bg-card/70 backdrop-blur-sm text-card-foreground rounded-lg rounded-bl-sm border border-border/40'
         )}
@@ -94,7 +94,7 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
         {!isCurrentUserMessage && (
           <p className={cn(
             "text-xs font-semibold mb-0.5",
-            isHariumAiMessage ? "text-accent-foreground/80" : "text-accent"
+            isChohanGenAiMessage ? "text-accent-foreground/80" : "text-accent"
             )}>
             {message.sender.nickname || message.sender.username}
           </p>
@@ -136,7 +136,7 @@ export default function LiveChatInterface() {
     {
       id: 'system-welcome-basic-simplified',
       sender: SystemProfile,
-      content: `Welcome to Live Group Chat! Mention @hariumai to talk to the AI. Messages are local.`,
+      content: `Welcome to Live Group Chat! Mention @chohangenai to talk to the AI. Messages are local.`,
       timestamp: Date.now(),
     }
   ]);
@@ -184,15 +184,15 @@ export default function LiveChatInterface() {
     const originalInputValue = inputValue; 
     setInputValue('');
     
-    if (originalInputValue.toLowerCase().startsWith(HARIUM_AI_MENTION_TRIGGER)) {
-      const aiPrompt = originalInputValue.substring(HARIUM_AI_MENTION_TRIGGER.length).trim();
+    if (originalInputValue.toLowerCase().startsWith(CHOHANGENAI_MENTION_TRIGGER)) {
+      const aiPrompt = originalInputValue.substring(CHOHANGENAI_MENTION_TRIGGER.length).trim();
       
       if (aiPrompt) {
-        const thinkingMessageId = `msg-hariumai-thinking-${Date.now()}`;
+        const thinkingMessageId = `msg-chohangenai-thinking-${Date.now()}`;
         const thinkingMessage: LiveMessage = {
           id: thinkingMessageId,
-          sender: hariumAiProfile,
-          content: `Harium AI is thinking...`,
+          sender: chohanGenAiProfile,
+          content: `ChohanGenAI is thinking...`,
           timestamp: Date.now(),
           isThinking: true,
         };
@@ -215,19 +215,19 @@ export default function LiveChatInterface() {
           const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
           
           const aiResponseMessage: LiveMessage = {
-            id: `msg-hariumai-response-${Date.now()}`,
-            sender: hariumAiProfile,
+            id: `msg-chohangenai-response-${Date.now()}`,
+            sender: chohanGenAiProfile,
             content: result.response,
             timestamp: Date.now(),
           };
            setMessages(prev => prev.map(msg => msg.id === thinkingMessageId ? aiResponseMessage : msg));
 
         } catch (error) {
-          console.error("Error calling Harium AI:", error);
-          toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to get response from Harium AI.' });
+          console.error("Error calling ChohanGenAI:", error);
+          toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to get response from ChohanGenAI.' });
           const errorMessage: LiveMessage = {
-            id: `msg-hariumai-error-${Date.now()}`,
-            sender: hariumAiProfile,
+            id: `msg-chohangenai-error-${Date.now()}`,
+            sender: chohanGenAiProfile,
             content: "Sorry, I couldn't process that.",
             timestamp: Date.now(),
           };
@@ -235,8 +235,8 @@ export default function LiveChatInterface() {
         }
       } else {
         const noPromptMessage: LiveMessage = {
-          id: `msg-hariumai-noprompt-${Date.now()}`,
-          sender: hariumAiProfile,
+          id: `msg-chohangenai-noprompt-${Date.now()}`,
+          sender: chohanGenAiProfile,
           content: "You mentioned me! What can I help you with?",
           timestamp: Date.now(),
         };
@@ -292,7 +292,7 @@ export default function LiveChatInterface() {
         >
           <Input
             type="text"
-            placeholder="Type a message... (@hariumai for AI)"
+            placeholder="Type a message... (@chohangenai for AI)"
             value={inputValue}
             onChange={handleInputChange}
             disabled={isSending}

@@ -49,10 +49,10 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
 
 
   const phraseConfigurations: AnimatedPhraseConfig[] = useMemo(() => [
-    { text: "Welcome to Harium AI" },
+    { text: "Welcome to ChohanGenAI" },
     { text: "Pakistan's first AI Assistant" },
     {
-      text: mode === 'login' ? "Log into Harium AI to get started" : "Sign up in Harium AI to get started",
+      text: mode === 'login' ? "Log into ChohanGenAI to get started" : "Sign up in ChohanGenAI to get started",
       isFinal: true,
     },
   ], [mode]);
@@ -162,7 +162,7 @@ export default function AuthForm({ mode, onSubmit }: AuthFormProps) {
             </span>
         </CardTitle>
         <CardDescription className="text-center pt-2">
-          {mode === 'login' ? 'Log in to continue to Harium AI.' : 'Enter your details to get started.'}
+          {mode === 'login' ? 'Log in to continue to ChohanGenAI.' : 'Enter your details to get started.'}
         </CardDescription>
       </CardHeader>
       <Form {...form}>

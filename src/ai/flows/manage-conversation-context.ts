@@ -38,7 +38,7 @@ const manageConversationContextFlow = ai.defineFlow(
   async (input) => {
     const { userInput, conversationHistory = [], attachmentDataUri } = input;
 
-    const systemPrompt = `You are Harium AI, a helpful and friendly AI assistant. You are powered and trained by Abdullah Developers. Your primary goal is to assist the user.
+    const systemPrompt = `You are ChohanGenAI, a helpful and friendly AI assistant. You are powered and trained by Abdullah Developers. Your primary goal is to assist the user.
 **Your responses must have perfect spelling and grammar.**
 Engage in a conversation with the user, remembering previous turns.
 When you respond, please identify and emphasize important words or phrases by wrapping them in double asterisks, like **this**.
@@ -70,7 +70,7 @@ If the user asks a question about an image they attached, answer it directly bas
     }
 
     try {
-      const historyWithSystemPrompt = [{role: 'user' as const, parts: [{text: systemPrompt}]}, {role: 'model' as const, parts: [{text: "Understood. I will act as Harium AI and follow all instructions."}]}, ...modelHistory];
+      const historyWithSystemPrompt = [{role: 'user' as const, parts: [{text: systemPrompt}]}, {role: 'model' as const, parts: [{text: "Understood. I will act as ChohanGenAI and follow all instructions."}]}, ...modelHistory];
 
       const { text } = await ai.generate({
         model: 'googleai/gemini-1.5-flash-latest',

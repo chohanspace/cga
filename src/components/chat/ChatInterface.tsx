@@ -233,7 +233,7 @@ export default function ChatInterface() {
         {
             id: 'welcome-message-initial',
             role: 'model',
-            content: `Hello ${displayName}! I am Harium AI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
+            content: `Hello ${displayName}! I am ChohanGenAI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
         },
         ]);
     }
@@ -410,7 +410,7 @@ export default function ChatInterface() {
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Failed to get response from Harium AI. Please check your configuration and try again.',
+          description: 'Failed to get response from ChohanGenAI. Please check your configuration and try again.',
         });
         const aiMessage: Message = {
           id: `model-error-${Date.now()}`,
@@ -503,11 +503,11 @@ export default function ChatInterface() {
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 bg-foreground rounded-full flex items-center justify-center shadow-md shrink-0">
               <span className="text-background text-lg font-bold animate-letter-scale-pulse">
-                H
+                C
               </span>
             </div>
             <h1 className="font-black text-primary text-2xl md:text-3xl">
-              Harium AI
+              ChohanGenAI
             </h1>
             <span className="text-xs md:text-sm font-normal text-muted-foreground/80 self-center">({selectedModel})</span>
           </div>
