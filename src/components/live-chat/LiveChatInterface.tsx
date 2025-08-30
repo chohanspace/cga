@@ -12,6 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { db } from '@/lib/firebase';
+import { ref, onValue, off, push, serverTimestamp, set } from "firebase/database";
 
 
 export interface LiveMessage {
@@ -114,7 +116,7 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
           {formatTimestamp(message.timestamp)}
         </p>
       </div>
-      {isCurrentUserMessage && currentUser && ( // Added currentUser check
+      {isCurrentUserMessage && currentUser && ( 
          <Avatar className="h-8 w-8 shrink-0 border border-primary/30 shadow-md self-start">
           {currentUser.pfpUrl ? (
             <AvatarImage src={currentUser.pfpUrl} alt={currentUser.nickname || currentUser.username} />
@@ -132,20 +134,44 @@ const LiveMessageItemSimplified = ({ message, currentUsername }: { message: Live
 
 export default function LiveChatInterface() {
   const [inputValue, setInputValue] = useState('');
-  const [messages, setMessages] = useState<LiveMessage[]>([
-    {
-      id: 'system-welcome-basic-simplified',
-      sender: SystemProfile,
-      content: `Welcome to Live Group Chat! Mention @chohangenai to talk to the AI. Messages are local.`,
-      timestamp: Date.now(),
-    }
-  ]);
+  const [messages, setMessages] = useState<LiveMessage[]>([]);
   const [isSending, setIsSending] = useState(false);
   const { currentUser } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const chatRoomId = 'general'; // Static chat room for this example
+  const messagesRef = ref(db, `live-chats/${chatRoomId}/messages`);
+
+  useEffect(() => {
+    const welcomeMessage: LiveMessage = {
+        id: 'system-welcome-basic-simplified',
+        sender: SystemProfile,
+        content: `Welcome to Live Group Chat! Mention @chohangenai to talk to the AI.`,
+        timestamp: Date.now(),
+    };
+    
+    let isInitialLoad = true;
+
+    const unsubscribe = onValue(messagesRef, (snapshot) => {
+        const data = snapshot.val();
+        const loadedMessages: LiveMessage[] = data ? Object.values(data) : [];
+        const sortedMessages = loadedMessages.sort((a, b) => a.timestamp - b.timestamp);
+        
+        if (isInitialLoad) {
+            setMessages([welcomeMessage, ...sortedMessages]);
+            isInitialLoad = false;
+        } else {
+            setMessages(prevMessages => {
+                const newMessages = sortedMessages.filter(sm => !prevMessages.some(pm => pm.id === sm.id));
+                return [...prevMessages, ...newMessages];
+            });
+        }
+    });
+
+    return () => off(messagesRef);
+  }, [messagesRef]);
 
   useEffect(() => {
     const timerId = setTimeout(() => {
@@ -169,8 +195,11 @@ export default function LiveChatInterface() {
 
     setIsSending(true);
 
+    const newMessageRef = push(messagesRef);
+    const messageId = newMessageRef.key!;
+
     const userMessage: LiveMessage = {
-      id: `msg-user-${Date.now()}`,
+      id: messageId,
       sender: {
           username: currentUser.username,
           nickname: currentUser.nickname,
@@ -180,7 +209,7 @@ export default function LiveChatInterface() {
       timestamp: Date.now(),
     };
     
-    setMessages(prev => [...prev, userMessage]);
+    await set(newMessageRef, userMessage);
     const originalInputValue = inputValue; 
     setInputValue('');
     
@@ -193,7 +222,7 @@ export default function LiveChatInterface() {
           id: thinkingMessageId,
           sender: chohanGenAiProfile,
           content: `ChohanGenAI is thinking...`,
-          timestamp: Date.now(),
+          timestamp: Date.now() + 1, // ensure it appears after user message
           isThinking: true,
         };
         setMessages(prev => [...prev, thinkingMessage]);
@@ -214,36 +243,47 @@ export default function LiveChatInterface() {
           };
           const result: ManageConversationContextOutput = await manageConversationContext(aiInput);
           
+          const aiResponseRef = push(messagesRef);
+          const aiMessageId = aiResponseRef.key!;
           const aiResponseMessage: LiveMessage = {
-            id: `msg-chohangenai-response-${Date.now()}`,
+            id: aiMessageId,
             sender: chohanGenAiProfile,
             content: result.response,
-            timestamp: Date.now(),
+            timestamp: Date.now() + 2,
           };
-           setMessages(prev => prev.map(msg => msg.id === thinkingMessageId ? aiResponseMessage : msg));
+          await set(aiResponseRef, aiResponseMessage);
+          setMessages(prev => prev.filter(msg => msg.id !== thinkingMessageId));
+
 
         } catch (error) {
           console.error("Error calling ChohanGenAI:", error);
           toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to get response from ChohanGenAI.' });
+          
+          const errorResponseRef = push(messagesRef);
+          const errorMessageId = errorResponseRef.key!;
           const errorMessage: LiveMessage = {
-            id: `msg-chohangenai-error-${Date.now()}`,
+            id: errorMessageId,
             sender: chohanGenAiProfile,
             content: "Sorry, I couldn't process that.",
-            timestamp: Date.now(),
+            timestamp: Date.now() + 2,
           };
-          setMessages(prev => prev.map(msg => msg.id === thinkingMessageId ? errorMessage : msg));
+          await set(errorResponseRef, errorMessage);
+          setMessages(prev => prev.filter(msg => msg.id !== thinkingMessageId));
+
         }
       } else {
+        const noPromptRef = push(messagesRef);
+        const noPromptId = noPromptRef.key!;
         const noPromptMessage: LiveMessage = {
-          id: `msg-chohangenai-noprompt-${Date.now()}`,
+          id: noPromptId,
           sender: chohanGenAiProfile,
           content: "You mentioned me! What can I help you with?",
-          timestamp: Date.now(),
+          timestamp: Date.now() + 1,
         };
-        setMessages(prev => [...prev, noPromptMessage]);
+        await set(noPromptRef, noPromptMessage);
       }
     }
-    setIsSending(false); // General case for user messages or AI no-prompt
+    setIsSending(false);
   };
   
   const handleGoBack = () => {

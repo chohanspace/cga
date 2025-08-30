@@ -1,6 +1,6 @@
 // Import the functions you need from the SDKs you need
 import { initializeApp, getApps, getApp } from "firebase/app";
-import { getFirestore } from "firebase/firestore";
+import { getDatabase } from "firebase/database";
 // TODO: Add SDKs for Firebase products that you want to use
 // https://firebase.google.com/docs/web/setup#available-libraries
 
@@ -8,6 +8,7 @@ import { getFirestore } from "firebase/firestore";
 const firebaseConfig = {
   apiKey: "AIzaSyCKfIT1cRa-8Z9aXQoRyXaX1tnLzbVrCKc",
   authDomain: "cloudstation-companion.firebaseapp.com",
+  databaseURL: "https://cloudstation-companion-default-rtdb.firebaseio.com",
   projectId: "cloudstation-companion",
   storageBucket: "cloudstation-companion.appspot.com",
   messagingSenderId: "254312116541",
@@ -17,6 +18,6 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
-const db = getFirestore(app);
+const db = getDatabase(app);
 
 export { app, db };

@@ -1,0 +1,25 @@
+{
+  "rules": {
+    "users": {
+      "$uid": {
+        ".read": "true", // In a real app, you'd want this to be "$uid === auth.uid"
+        ".write": "true" // In a real app, you'd want this to be "$uid === auth.uid"
+      }
+    },
+    "chats": {
+      "$uid": {
+        ".read": "true", // In a real app, you'd want this to be "$uid === auth.uid.split(':')[1]" after custom auth setup
+        ".write": "true"// In a real app, you'd want this to be "$uid === auth.uid.split(':')[1]"
+      }
+    },
+    "live-chats": {
+       "general": {
+          ".read": "true", // allow any authenticated user to read
+          ".write": "true", // allow any authenticated user to write
+          "messages": {
+            ".indexOn": "timestamp"
+          }
+       }
+    }
+  }
+}

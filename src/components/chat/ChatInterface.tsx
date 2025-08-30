@@ -11,7 +11,7 @@ import { useAuth } from '@/context/AuthContext';
 import ChatMenu from './ChatMenu';
 import EditProfileDialog from './EditProfileDialog';
 import { db } from '@/lib/firebase';
-import { doc, setDoc, onSnapshot, collection, orderBy, query, limit } from "firebase/firestore";
+import { ref, set, onValue, off } from "firebase/database";
 
 export interface Message {
   id: string;
@@ -206,7 +206,7 @@ export default function ChatInterface() {
   const [isAiGenerationStopped, setIsAiGenerationStopped] = useState(false);
   const isAiGenerationStoppedRef = useRef(isAiGenerationStopped);
   const [suggestedPrompts, setSuggestedPrompts] = useState<string[]>([]);
-  const chatDocId = currentUser ? `chat_${currentUser.username}` : null;
+  const chatPath = currentUser ? `chats/${currentUser.username}` : null;
 
   useEffect(() => {
     isAiGenerationStoppedRef.current = isAiGenerationStopped;
@@ -229,13 +229,13 @@ export default function ChatInterface() {
   }, []);
 
   useEffect(() => {
-    if (!chatDocId) return;
+    if (!chatPath) return;
 
-    const chatDocRef = doc(db, "chats", chatDocId);
+    const chatRef = ref(db, chatPath);
 
-    const unsubscribe = onSnapshot(chatDocRef, (doc) => {
-      if (doc.exists()) {
-        const data = doc.data();
+    const unsubscribe = onValue(chatRef, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
         const history = data.messages || [];
         setConversationHistory(history);
 
@@ -250,7 +250,6 @@ export default function ChatInterface() {
             setConversationHistory([welcomeMessage]);
         }
       } else {
-        // Doc doesn't exist, create it with a welcome message
         const displayName = currentUser?.nickname || currentUser?.username;
         const welcomeMessage: Message = {
             id: 'welcome-message-initial',
@@ -258,12 +257,12 @@ export default function ChatInterface() {
             content: `Hello ${displayName}! I am ChohanGenAI, your friendly assistant using model ${selectedModel}. How can I help you today? ✨ You can also ask me to generate images!`,
             timestamp: Date.now()
         };
-        setDoc(chatDocRef, { messages: [welcomeMessage], model: selectedModel });
+        set(chatRef, { messages: [welcomeMessage], model: selectedModel });
       }
     });
 
-    return () => unsubscribe();
-  }, [chatDocId, currentUser, selectedModel]);
+    return () => off(chatRef);
+  }, [chatPath, currentUser, selectedModel]);
   
   const handlePromptSuggestionClick = (promptText: string) => {
     setInputValue(promptText);
@@ -331,13 +330,13 @@ export default function ChatInterface() {
     });
   }, []);
 
-  const updateFirestoreHistory = async (newHistory: Message[]) => {
-      if (!chatDocId) return;
-      const chatDocRef = doc(db, "chats", chatDocId);
+  const updateDatabaseHistory = async (newHistory: Message[]) => {
+      if (!chatPath) return;
+      const chatRef = ref(db, chatPath);
       try {
-          await setDoc(chatDocRef, { messages: newHistory, model: selectedModel }, { merge: true });
+          await set(chatRef, { messages: newHistory, model: selectedModel });
       } catch (error) {
-          console.error("Error updating Firestore history:", error);
+          console.error("Error updating Realtime DB history:", error);
           toast({
               variant: 'destructive',
               title: 'Sync Error',
@@ -349,7 +348,7 @@ export default function ChatInterface() {
 
   const handleSubmit = async (currentInputText: string) => {
     const finalInput = currentInputText.trim();
-    if ((!finalInput && !attachedFile) || isLoadingAI || !chatDocId) return;
+    if ((!finalInput && !attachedFile) || isLoadingAI || !chatPath) return;
 
     setIsLoadingAI(true);
     setIsAiGenerationStopped(false);
@@ -364,7 +363,7 @@ export default function ChatInterface() {
     };
 
     const newHistoryWithUserMessage = [...conversationHistory, userMessage];
-    updateFirestoreHistory(newHistoryWithUserMessage);
+    updateDatabaseHistory(newHistoryWithUserMessage);
 
     setInputValue(''); 
     const currentAttachmentDataUri = attachedFile?.dataUri;
@@ -400,7 +399,7 @@ export default function ChatInterface() {
           timestamp: Date.now(),
         };
         const historyWithGeneratingMsg = [...newHistoryWithUserMessage, generatingMessage];
-        updateFirestoreHistory(historyWithGeneratingMsg);
+        updateDatabaseHistory(historyWithGeneratingMsg);
 
         try {
           if (isAiGenerationStoppedRef.current) { return; }
@@ -431,7 +430,7 @@ export default function ChatInterface() {
             description: imageError?.message || 'Could not generate the image.',
           });
         } finally {
-            updateFirestoreHistory(finalAiHistory);
+            updateDatabaseHistory(finalAiHistory);
             if (!isAiGenerationStoppedRef.current) {
                 setIsLoadingAI(false);
             }
@@ -444,7 +443,7 @@ export default function ChatInterface() {
           timestamp: Date.now(),
         };
         finalAiHistory = [...newHistoryWithUserMessage, aiMessage];
-        updateFirestoreHistory(finalAiHistory);
+        updateDatabaseHistory(finalAiHistory);
       }
 
     } catch (error) {
@@ -461,14 +460,14 @@ export default function ChatInterface() {
             content: "I encountered an error. Please try again.",
             timestamp: Date.now(),
         };
-        updateFirestoreHistory([...newHistoryWithUserMessage, errorMessage]);
+        updateDatabaseHistory([...newHistoryWithUserMessage, errorMessage]);
         setIsLoadingAI(false);
       }
     }
   };
 
   const handleClearContext = async () => {
-    if (!chatDocId) return;
+    if (!chatPath) return;
 
     if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -487,7 +486,7 @@ export default function ChatInterface() {
       timestamp: Date.now()
     };
     
-    await updateFirestoreHistory([welcomeMessage]);
+    await updateDatabaseHistory([welcomeMessage]);
     handleClearAttachment();
     toast({
         title: 'Context Cleared',
@@ -504,7 +503,7 @@ export default function ChatInterface() {
         timestamp: Date.now()
     };
     const newHistory = [...conversationHistory.filter(m => !m.id.startsWith('welcome-')), modelChangeMessage];
-    updateFirestoreHistory(newHistory);
+    updateDatabaseHistory(newHistory);
     toast({
         title: 'Model Changed',
         description: `Now using model ${model}.`,

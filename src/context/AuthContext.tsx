@@ -6,7 +6,7 @@ import { createContext, useContext, useState, useEffect, useCallback } from 'rea
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
 import { db } from '@/lib/firebase';
-import { collection, doc, getDoc, setDoc, updateDoc, query, where, getDocs } from 'firebase/firestore';
+import { ref, get, set, update } from "firebase/database";
 
 // Interface for the full user data stored with password
 interface User {
@@ -72,11 +72,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return false;
     }
 
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("username", "==", userData.username));
-    const querySnapshot = await getDocs(q);
+    const userRef = ref(db, `users/${userData.username}`);
+    const userSnapshot = await get(userRef);
 
-    if (!querySnapshot.empty) {
+    if (userSnapshot.exists()) {
       toast({
         variant: 'destructive',
         title: 'Signup Failed',
@@ -95,9 +94,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     
     try {
-        await setDoc(doc(usersRef, userData.username), newUserForStorage);
+        await set(userRef, newUserForStorage);
     } catch (error) {
-        console.error("Error creating user in Firestore: ", error);
+        console.error("Error creating user in Realtime DB: ", error);
         toast({
             variant: 'destructive',
             title: 'Signup Failed',
@@ -105,7 +104,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
         return false;
     }
-
 
     const userProfile: UserProfile = {
         username: newUserForStorage.username,
@@ -126,12 +124,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [router, toast]);
 
   const login = useCallback(async (userData: Pick<User, 'username' | 'password'>): Promise<boolean> => {
-    const userDocRef = doc(db, "users", userData.username);
+    const userRef = ref(db, `users/${userData.username}`);
     
     try {
-        const userDoc = await getDoc(userDocRef);
+        const userSnapshot = await get(userRef);
 
-        if (!userDoc.exists() || userDoc.data().password !== userData.password) {
+        if (!userSnapshot.exists() || userSnapshot.val().password !== userData.password) {
           toast({
             variant: 'destructive',
             title: 'Login Failed',
@@ -140,7 +138,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
 
-        const user = userDoc.data() as User;
+        const user = userSnapshot.val() as User;
         const userProfile: UserProfile = {
             username: user.username,
             nickname: user.nickname || user.username,
@@ -185,9 +183,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return false;
     }
 
-    const userDocRef = doc(db, "users", currentUser.username);
+    const userRef = ref(db, `users/${currentUser.username}`);
     
-    // Default nickname to username if it's cleared
     const newNickname = profileData.nickname !== undefined 
       ? (profileData.nickname.trim() === '' ? currentUser.username : profileData.nickname) 
       : currentUser.nickname;
@@ -198,7 +195,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
 
     try {
-        await updateDoc(userDocRef, profileUpdateData);
+        await update(userRef, profileUpdateData);
     } catch(error) {
         console.error("Error updating profile: ", error);
         toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not update your profile.' });

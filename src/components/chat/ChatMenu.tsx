@@ -52,13 +52,11 @@ export default function ChatMenu({
             <MessageSquarePlus className="mr-2 h-4 w-4" />
             <span>New AI Chat</span>
           </DropdownMenuItem>
-          <DropdownMenuItem 
-            disabled 
-            className="w-full cursor-not-allowed opacity-50"
-            aria-disabled="true"
-          >
-            <Users className="mr-2 h-4 w-4" />
-            <span>Live Group Chat (Coming Soon)</span>
+          <DropdownMenuItem asChild className="cursor-pointer">
+            <Link href="/live-chat">
+              <Users className="mr-2 h-4 w-4" />
+              <span>Live Group Chat</span>
+            </Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
