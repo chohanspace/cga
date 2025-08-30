@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import Link from 'next/link';
-import { Loader2, Check, XCircle } from 'lucide-react';
+import { Loader2, Check, XCircle, ArrowLeft } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuth } from '@/context/AuthContext';
 
@@ -220,9 +220,14 @@ export default function AuthForm({ mode }: AuthFormProps) {
               <Button type="submit" className="w-full" disabled={isSubmitting}>
                  {authStatus === 'pending' ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verifying...</> : 'Verify & Login'}
               </Button>
-               <Button type="button" variant="link" onClick={handleResendOtp} disabled={isSubmitting}>
-                Didn't receive code? Resend
-              </Button>
+               <div className="flex justify-between w-full">
+                <Button type="button" variant="link" onClick={() => setAuthStep('credentials')} disabled={isSubmitting} className="p-1 text-sm">
+                    <ArrowLeft className="mr-1 h-4 w-4"/> Go Back
+                </Button>
+                <Button type="button" variant="link" onClick={handleResendOtp} disabled={isSubmitting} className="p-1 text-sm">
+                    Resend OTP
+                </Button>
+               </div>
             </CardFooter>
           </form>
         </Form>
@@ -330,3 +335,5 @@ export default function AuthForm({ mode }: AuthFormProps) {
     </Card>
   );
 }
+
+    
