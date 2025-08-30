@@ -1,3 +1,4 @@
+
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/firebase';
 import { ref, get, remove, update } from "firebase/database";
@@ -57,11 +58,16 @@ export async function POST(request: Request) {
 
         switch (action) {
             case 'delete-user':
-                // Also delete user's chats
                 const chatsRef = ref(db, `chats/${username}`);
+                const chatsSnapshot = await get(chatsRef);
+
                 await remove(userRef);
-                await remove(chatsRef);
-                return NextResponse.json({ message: 'User and their chats deleted successfully' }, { status: 200 });
+                // Only try to remove chats if they exist
+                if (chatsSnapshot.exists()) {
+                    await remove(chatsRef);
+                }
+                
+                return NextResponse.json({ message: 'User and their associated data deleted successfully' }, { status: 200 });
             
             case 'reset-password':
                 if (!newPassword || newPassword.length < 6) {
