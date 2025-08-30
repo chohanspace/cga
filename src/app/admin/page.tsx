@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger, DialogClose } from '@/components/ui/dialog';
 import { useToast } from '@/hooks/use-toast';
-import { Loader2, Trash2, KeyRound, ShieldCheck } from 'lucide-react';
+import { Loader2, Trash2, KeyRound, ShieldCheck, Search } from 'lucide-react';
 import type { UserProfile } from '@/context/AuthContext';
 
 const accessKeySchema = z.object({
@@ -32,8 +32,10 @@ export default function AdminPage() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [isActionLoading, setIsActionLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState<UserProfile | null>(null);
   const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const { toast } = useToast();
 
   const accessForm = useForm<AccessKeyFormData>({
@@ -45,7 +47,6 @@ export default function AdminPage() {
     resolver: zodResolver(resetPasswordSchema),
     defaultValues: { newPassword: '' },
   });
-
 
   const handleAccessSubmit = (data: AccessKeyFormData) => {
     if (data.accessKey === ADMIN_ACCESS_KEY) {
@@ -78,7 +79,7 @@ export default function AdminPage() {
   
   const handleDeleteUser = async (username: string) => {
     if (confirm(`Are you sure you want to delete user: ${username}? This action is irreversible.`)) {
-        setIsLoading(true);
+        setIsActionLoading(true);
         try {
             const response = await fetch('/api/admin', {
                 method: 'POST',
@@ -96,14 +97,15 @@ export default function AdminPage() {
             fetchUsers();
         } catch (error: any) {
             toast({ variant: 'destructive', title: 'Error', description: error.message });
-            setIsLoading(false);
+        } finally {
+            setIsActionLoading(false);
         }
     }
   };
 
   const handleResetPassword = async (data: ResetPasswordFormData) => {
       if (!selectedUser) return;
-      setIsLoading(true);
+      setIsActionLoading(true);
       try {
           const response = await fetch('/api/admin', {
               method: 'POST',
@@ -123,8 +125,14 @@ export default function AdminPage() {
       } catch (error: any) {
           toast({ variant: 'destructive', title: 'Error', description: error.message });
       }
-      setIsLoading(false);
+      setIsActionLoading(false);
   };
+
+  const filteredUsers = users.filter(user => 
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.nickname && user.nickname.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
   
   if (!isAuthenticated) {
     return (
@@ -167,7 +175,16 @@ export default function AdminPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle>User Management</CardTitle>
-          <CardDescription>View, delete, or reset passwords for users.</CardDescription>
+          <CardDescription>View, delete, or reset passwords for users. {users.length} users found.</CardDescription>
+           <div className="relative mt-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+            <Input
+              placeholder="Search by username, email, or nickname..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -190,7 +207,7 @@ export default function AdminPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  users.map((user) => (
+                  filteredUsers.map((user) => (
                     <TableRow key={user.username}>
                       <TableCell className="font-medium">{user.username}</TableCell>
                       <TableCell>{user.email}</TableCell>
@@ -209,12 +226,12 @@ export default function AdminPage() {
                             }
                         }}>
                           <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="mr-2">
+                            <Button variant="outline" size="sm" className="mr-2" disabled={isActionLoading}>
                               <KeyRound className="mr-1 h-4 w-4" /> Reset Pass
                             </Button>
                           </DialogTrigger>
-                          <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.username)}>
-                            <Trash2 className="mr-1 h-4 w-4" /> Delete
+                          <Button variant="destructive" size="sm" onClick={() => handleDeleteUser(user.username)} disabled={isActionLoading}>
+                            {isActionLoading ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Trash2 className="mr-1 h-4 w-4" />} Delete
                           </Button>
                           {isResetDialogOpen && selectedUser?.username === user.username && (
                             <DialogContent>
@@ -243,8 +260,8 @@ export default function AdminPage() {
                                             <DialogClose asChild>
                                                 <Button type="button" variant="secondary">Cancel</Button>
                                             </DialogClose>
-                                            <Button type="submit" disabled={isLoading}>
-                                                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                            <Button type="submit" disabled={isActionLoading}>
+                                                {isActionLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                                                 Set Password
                                             </Button>
                                         </DialogFooter>
@@ -256,6 +273,13 @@ export default function AdminPage() {
                       </TableCell>
                     </TableRow>
                   ))
+                )}
+                 {filteredUsers.length === 0 && !isLoading && (
+                    <TableRow>
+                        <TableCell colSpan={4} className="text-center h-24">
+                            No users found matching your search.
+                        </TableCell>
+                    </TableRow>
                 )}
               </TableBody>
             </Table>
