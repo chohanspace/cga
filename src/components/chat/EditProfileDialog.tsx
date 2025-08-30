@@ -135,7 +135,7 @@ export default function EditProfileDialog({ isOpen, onOpenChange, user }: EditPr
             />
              <div className="space-y-2">
                 <Label>Email</Label>
-                <Input type="email" value={currentUser?.email || ''} disabled readOnly />
+                <Input type="email" value={currentUser?.email || ''} readOnly />
                 <p className="text-xs text-muted-foreground">Email address cannot be changed.</p>
             </div>
 
