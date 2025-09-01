@@ -1,0 +1,124 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Removed direct font-family override from body */
+
+@layer base {
+  :root {
+    /* Midnight Blue - Light mode is still blue-ish */
+    --background: 210 40% 98%; /* Almost White */
+    --foreground: 222 47% 11%; /* Dark Blue */
+
+    --card: 210 40% 100%; /* White */
+    --card-foreground: 222 47% 11%;
+
+    --popover: 210 40% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    --primary: 217 91% 60%; /* Bright Blue */
+    --primary-foreground: 210 40% 98%; /* Off-white text on gradient */
+
+    --secondary: 222 47% 95%; /* Light Gray-Blue */
+    --secondary-foreground: 222 47% 11%;
+
+    --muted: 222 47% 95%;
+    --muted-foreground: 222 47% 45%; /* Muted Blue-Gray */
+
+    --accent: 217 91% 60%; /* Bright Blue for accents */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 84.2% 60.2%; /* Red */
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 222 47% 88%;
+    --input: 222 47% 88%;
+    --ring: 217 91% 60%;
+
+    --chart-1: 217 91% 60%;
+    --chart-2: 217 81% 55%;
+    --chart-3: 217 71% 50%;
+    --chart-4: 217 61% 45%;
+    --chart-5: 217 51% 40%;
+
+    --radius: 0.5rem;
+
+    /* Sidebar specific colors for the light theme */
+    --sidebar-background: 222 47% 96%; /* Slightly darker off-white */
+    --sidebar-foreground: 222 47% 11%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 210 40% 100%; /* White for selected items */
+    --sidebar-accent-foreground: 222 47% 11%;
+    --sidebar-border: 222 47% 90%;
+    --sidebar-ring: 217 91% 60%;
+  }
+  
+  .dark {
+    /* Midnight Blue Dark Theme */
+    --background: 222 47% 11%; /* Dark Blue */
+    --foreground: 210 40% 98%; /* Off-white */
+
+    --card: 222 47% 14%; /* Slightly Lighter Dark Blue */
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 217 91% 60%; /* Bright Blue */
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 217 33% 25%; /* Muted Blue */
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 217 33% 17%; /* Darker Muted Blue */
+    --muted-foreground: 215 28% 65%; /* Light Gray-Blue */
+
+    --accent: 217 91% 60%; /* Bright Blue for accents */
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 72% 51%; /* Red */
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217 33% 25%;
+    --input: 217 33% 17%;
+    --ring: 217 91% 60%;
+    
+    --chart-1: 217 91% 60%;
+    --chart-2: 217 81% 55%;
+    --chart-3: 217 71% 50%;
+    --chart-4: 217 61% 45%;
+    --chart-5: 217 51% 40%;
+
+    /* Sidebar specific colors */
+    --sidebar-background: 222 47% 9%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 217 91% 60%;
+    --sidebar-primary-foreground: 210 40% 98%;
+    --sidebar-accent: 217 33% 17%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217 33% 25%;
+    --sidebar-ring: 217 91% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground font-extrabold select-none;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer components {
+  /* Using primary color for the gradient background now */
+  .bg-primary-gradient {
+    background: hsl(var(--primary));
+  }
+  .text-primary-gradient {
+    @apply text-primary;
+  }
+}
